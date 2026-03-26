@@ -62,7 +62,7 @@ func (h *handler) GetOrigin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	short := r.URL.String()[1:]
+	short := strings.TrimPrefix(r.URL.Path, "/")
 	originalURL, errGet := h.s.GetOriginalURL(short)
 	if errGet != nil {
 		http.Error(w, "Bad request", http.StatusBadRequest)
