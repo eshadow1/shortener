@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -8,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -60,6 +62,12 @@ func TestHandler_GetOrigin(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			req := httptest.NewRequestWithContext(t.Context(), test.method, test.url, http.NoBody)
+
+			rsCtx := chi.NewRouteContext()
+			rsCtx.URLParams.Add("id", strings.TrimPrefix(test.url, "/"))
+
+			req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rsCtx))
+
 			w := httptest.NewRecorder()
 
 			ms := new(MockService)

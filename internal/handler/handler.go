@@ -4,6 +4,8 @@ import (
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/go-chi/chi/v5"
 )
 
 type service interface {
@@ -62,7 +64,7 @@ func (h *handler) GetOrigin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	short := strings.TrimPrefix(r.URL.Path, "/")
+	short := chi.URLParam(r, "id")
 	originalURL, errGet := h.s.GetOriginalURL(short)
 	if errGet != nil {
 		http.Error(w, "Bad request", http.StatusBadRequest)

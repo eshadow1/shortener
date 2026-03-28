@@ -6,6 +6,8 @@ import (
 	"github.com/eshadow1/shortener/internal/service"
 
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
 )
 
 func main() {
@@ -13,11 +15,11 @@ func main() {
 	s := service.NewShortenerService(r)
 	h := handler.NewHandler(s)
 
-	mux := http.NewServeMux()
-	mux.HandleFunc(`/{id}`, h.GetOrigin)
-	mux.HandleFunc(`/`, h.PostCreate)
+	rs := chi.NewRouter()
+	rs.Get("/{id}", h.GetOrigin)
+	rs.Post("/", h.PostCreate)
 
-	err := http.ListenAndServe(`:8080`, mux)
+	err := http.ListenAndServe(`:8080`, rs)
 	if err != nil {
 		panic(err)
 	}
