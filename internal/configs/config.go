@@ -2,12 +2,11 @@ package configs
 
 import (
 	"flag"
-	"strings"
 )
 
 const (
 	DefaultAddr    = "localhost:8080"
-	DefaultBaseUrl = "http://localhost:8080/qsd54gFg"
+	DefaultBaseUrl = "http://localhost:8080"
 )
 
 type Config struct {
@@ -17,11 +16,6 @@ type Config struct {
 
 func NewConfig() *Config {
 	return &Config{}
-}
-
-func (c *Config) GetBaseDelta() string {
-	delta := strings.Split(c.BaseUrl, "/")
-	return delta[len(delta)-1]
 }
 
 func (c *Config) ParseWithFlag() {

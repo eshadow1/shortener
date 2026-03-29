@@ -69,7 +69,7 @@ func (h *handler) GetOrigin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	short := chi.URLParam(r, "shortURL")
-	originalURL, errGet := h.s.GetOriginalURL(strings.TrimPrefix(short, h.cfg.GetBaseDelta()))
+	originalURL, errGet := h.s.GetOriginalURL(strings.TrimPrefix(short, "/"))
 	if errGet != nil {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
