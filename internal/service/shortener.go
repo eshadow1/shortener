@@ -1,7 +1,7 @@
 package service
 
 import (
-	"crypto/md5"
+	"crypto/sha256"
 	"encoding/hex"
 )
 
@@ -18,7 +18,7 @@ func NewShortenerService(repo repository) *shortenerService {
 }
 
 func (*shortenerService) hashToShort(input string) string {
-	hash := md5.Sum([]byte(input))
+	hash := sha256.Sum256([]byte(input))
 
 	return hex.EncodeToString(hash[:])[:8]
 }

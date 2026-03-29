@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/eshadow1/shortener/internal/configs"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -14,11 +15,14 @@ type service interface {
 }
 
 type handler struct {
-	s service
+	cfg *configs.Config
+	s   service
 }
 
-func NewHandler(svc service) *handler {
-	return &handler{s: svc}
+func NewHandler(cfg *configs.Config, svc service) *handler {
+	return &handler{
+		cfg: cfg,
+		s:   svc}
 }
 
 func (h *handler) PostCreate(w http.ResponseWriter, r *http.Request) {
@@ -49,7 +53,7 @@ func (h *handler) PostCreate(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
-	_, err = w.Write([]byte("http://localhost:8080/" + short))
+	_, err = w.Write([]byte(h.cfg.BaseUrl + short))
 	if err != nil {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
@@ -64,8 +68,8 @@ func (h *handler) GetOrigin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	short := chi.URLParam(r, "id")
-	originalURL, errGet := h.s.GetOriginalURL(short)
+	short := chi.URLParam(r, "shortURL")
+	originalURL, errGet := h.s.GetOriginalURL(strings.TrimPrefix(short, h.cfg.GetBaseDelta()))
 	if errGet != nil {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return

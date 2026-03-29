@@ -9,6 +9,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	correctShort = "42b3e75f"
+	correctURL   = "https://practicum.yandex.ru/"
+)
+
 type MockRepository struct {
 	mock.Mock
 }
@@ -32,21 +37,21 @@ func TestShortenerService_CreateShortUrl(t *testing.T) {
 	}{
 		{
 			name:          "success_create",
-			url:           "https://practicum.yandex.ru/",
-			expectedShort: "0dd19817",
+			url:           correctURL,
+			expectedShort: correctShort,
 			expectedError: nil,
 		},
 		{
 			name:          "error_create",
 			url:           "https",
-			expectedShort: "5e056c50",
+			expectedShort: "3e194352",
 			expectedError: errors.New("don't save"),
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			mr := new(MockRepository)
-			mr.On("Save", "0dd19817", "https://practicum.yandex.ru/").Return(nil)
+			mr.On("Save", correctShort, correctURL).Return(nil)
 			mr.On("Save", mock.Anything, mock.Anything).Return(errors.New("don't save"))
 			s := NewShortenerService(mr)
 
@@ -70,8 +75,8 @@ func TestShortenerService_GetShortUrl(t *testing.T) {
 	}{
 		{
 			name:             "success",
-			short:            "0dd19817",
-			expectedOriginal: "https://practicum.yandex.ru/",
+			short:            correctShort,
+			expectedOriginal: correctURL,
 			expectedError:    nil,
 		},
 		{
@@ -84,7 +89,7 @@ func TestShortenerService_GetShortUrl(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			mr := new(MockRepository)
-			mr.On("Get", "0dd19817").Return("https://practicum.yandex.ru/", nil)
+			mr.On("Get", correctShort).Return(correctURL, nil)
 			mr.On("Get", mock.Anything).Return("", errors.New("not found"))
 			s := NewShortenerService(mr)
 

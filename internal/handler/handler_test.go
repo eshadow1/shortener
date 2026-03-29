@@ -9,10 +9,16 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/eshadow1/shortener/internal/configs"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+)
+
+const (
+	correctShort = "42b3e75f"
+	correctURL   = "https://practicum.yandex.ru/"
 )
 
 type MockService struct {
@@ -30,6 +36,11 @@ func (m *MockService) CreateShortUrl(origin string) (string, error) {
 }
 
 func TestHandler_GetOrigin(t *testing.T) {
+	cfg := &configs.Config{
+		Addr:    configs.DefaultAddr,
+		BaseUrl: configs.DefaultBaseUrl,
+	}
+
 	tests := []struct {
 		name             string
 		method           string
@@ -40,14 +51,14 @@ func TestHandler_GetOrigin(t *testing.T) {
 		{
 			name:             "success",
 			method:           http.MethodGet,
-			url:              "/abcdefgh",
+			url:              "/" + correctShort,
 			expectedStatus:   http.StatusTemporaryRedirect,
-			expectedLocation: "https://practicum.yandex.ru/",
+			expectedLocation: correctURL,
 		},
 		{
 			name:             "bad_method",
 			method:           http.MethodPost,
-			url:              "/abcdefgh",
+			url:              "/" + correctShort,
 			expectedStatus:   http.StatusBadRequest,
 			expectedLocation: "",
 		},
@@ -64,16 +75,16 @@ func TestHandler_GetOrigin(t *testing.T) {
 			req := httptest.NewRequestWithContext(t.Context(), test.method, test.url, http.NoBody)
 
 			rsCtx := chi.NewRouteContext()
-			rsCtx.URLParams.Add("id", strings.TrimPrefix(test.url, "/"))
+			rsCtx.URLParams.Add("shortURL", strings.TrimPrefix(test.url, "/"))
 
 			req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rsCtx))
 
 			w := httptest.NewRecorder()
 
 			ms := new(MockService)
-			ms.On("GetOriginalURL", "abcdefgh").Return("https://practicum.yandex.ru/", nil)
+			ms.On("GetOriginalURL", correctShort).Return(correctURL, nil)
 			ms.On("GetOriginalURL", mock.Anything).Return("", errors.New("short not found"))
-			h := NewHandler(ms)
+			h := NewHandler(cfg, ms)
 
 			h.GetOrigin(w, req)
 			assert.Equal(t, test.expectedStatus, w.Code)
@@ -83,6 +94,11 @@ func TestHandler_GetOrigin(t *testing.T) {
 }
 
 func TestHandler_PostCreate(t *testing.T) {
+	cfg := &configs.Config{
+		Addr:    configs.DefaultAddr,
+		BaseUrl: configs.DefaultBaseUrl,
+	}
+
 	tests := []struct {
 		name           string
 		method         string
@@ -93,14 +109,14 @@ func TestHandler_PostCreate(t *testing.T) {
 		{
 			name:           "success",
 			method:         http.MethodPost,
-			body:           "https://practicum.yandex.ru/",
+			body:           correctURL,
 			expectedStatus: http.StatusCreated,
-			expectedBody:   "http://localhost:8080/abcdefgh",
+			expectedBody:   configs.DefaultBaseUrl + correctShort,
 		},
 		{
 			name:           "bad_method",
 			method:         http.MethodGet,
-			body:           "https://practicum.yandex.ru/",
+			body:           correctURL,
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   "Bad request\n",
 		},
@@ -127,9 +143,9 @@ func TestHandler_PostCreate(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			ms := new(MockService)
-			ms.On("CreateShortUrl", "https://practicum.yandex.ru/").Return("abcdefgh", nil)
+			ms.On("CreateShortUrl", correctURL).Return(correctShort, nil)
 			ms.On("CreateShortUrl", mock.Anything).Return("", errors.New("bad request"))
-			h := NewHandler(ms)
+			h := NewHandler(cfg, ms)
 
 			h.PostCreate(w, req)
 
