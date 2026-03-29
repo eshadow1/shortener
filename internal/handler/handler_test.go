@@ -111,7 +111,7 @@ func TestHandler_PostCreate(t *testing.T) {
 			method:         http.MethodPost,
 			body:           correctURL,
 			expectedStatus: http.StatusCreated,
-			expectedBody:   configs.DefaultBaseUrl + correctShort,
+			expectedBody:   configs.DefaultBaseUrl + "/" + correctShort,
 		},
 		{
 			name:           "bad_method",

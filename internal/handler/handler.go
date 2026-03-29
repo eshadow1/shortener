@@ -53,7 +53,7 @@ func (h *handler) PostCreate(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
-	_, err = w.Write([]byte(h.cfg.BaseUrl + short))
+	_, err = w.Write([]byte(h.cfg.BaseUrl + "/" + short))
 	if err != nil {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
