@@ -25,13 +25,13 @@ type MockService struct {
 	mock.Mock
 }
 
-func (m *MockService) GetOriginalURL(short string) (string, error) {
-	args := m.Called(short)
+func (m *MockService) GetOriginalURL(ctx context.Context, short string) (string, error) {
+	args := m.Called(ctx, short)
 	return args.String(0), args.Error(1)
 }
 
-func (m *MockService) CreateShortUrl(origin string) (string, error) {
-	args := m.Called(origin)
+func (m *MockService) CreateShortUrl(ctx context.Context, origin string) (string, error) {
+	args := m.Called(ctx, origin)
 	return args.String(0), args.Error(1)
 }
 
@@ -59,7 +59,7 @@ func TestHandler_GetOrigin(t *testing.T) {
 			name:             "bad_method",
 			method:           http.MethodPost,
 			url:              "/" + correctShort,
-			expectedStatus:   http.StatusBadRequest,
+			expectedStatus:   http.StatusMethodNotAllowed,
 			expectedLocation: "",
 		},
 		{
@@ -82,8 +82,8 @@ func TestHandler_GetOrigin(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			ms := new(MockService)
-			ms.On("GetOriginalURL", correctShort).Return(correctURL, nil)
-			ms.On("GetOriginalURL", mock.Anything).Return("", errors.New("short not found"))
+			ms.On("GetOriginalURL", req.Context(), correctShort).Return(correctURL, nil)
+			ms.On("GetOriginalURL", req.Context(), mock.Anything).Return("", errors.New("short not found"))
 			h := NewHandler(cfg, ms)
 
 			h.GetOrigin(w, req)
@@ -117,7 +117,7 @@ func TestHandler_PostCreate(t *testing.T) {
 			name:           "bad_method",
 			method:         http.MethodGet,
 			body:           correctURL,
-			expectedStatus: http.StatusBadRequest,
+			expectedStatus: http.StatusMethodNotAllowed,
 			expectedBody:   "Bad request\n",
 		},
 		{
@@ -143,8 +143,8 @@ func TestHandler_PostCreate(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			ms := new(MockService)
-			ms.On("CreateShortUrl", correctURL).Return(correctShort, nil)
-			ms.On("CreateShortUrl", mock.Anything).Return("", errors.New("bad request"))
+			ms.On("CreateShortUrl", t.Context(), correctURL).Return(correctShort, nil)
+			ms.On("CreateShortUrl", t.Context(), mock.Anything).Return("", errors.New("bad request"))
 			h := NewHandler(cfg, ms)
 
 			h.PostCreate(w, req)

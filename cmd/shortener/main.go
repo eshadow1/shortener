@@ -1,6 +1,12 @@
 package main
 
 import (
+	"context"
+	"errors"
+	"log"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/eshadow1/shortener/internal/configs"
@@ -9,14 +15,13 @@ import (
 	"github.com/eshadow1/shortener/internal/service"
 
 	"net/http"
-
-	"github.com/go-chi/chi/v5"
 )
 
 const (
-	defaultReadTimeout  = 15 * time.Second
-	defaultWriteTimeout = 15 * time.Second
-	defaultIdleTimeout  = 60 * time.Second
+	defaultReadTimeout     = 15 * time.Second
+	defaultWriteTimeout    = 15 * time.Second
+	defaultIdleTimeout     = 60 * time.Second
+	defaultShutdownTimeout = 30 * time.Second
 )
 
 func main() {
@@ -27,9 +32,7 @@ func main() {
 	s := service.NewShortenerService(r)
 	h := handler.NewHandler(cfg, s)
 
-	rs := chi.NewRouter()
-	rs.Get("/{shortURL}", h.GetOrigin)
-	rs.Post("/", h.PostCreate)
+	rs := handler.InitRouter(h)
 
 	server := &http.Server{
 		Addr:         cfg.Addr,
@@ -39,8 +42,23 @@ func main() {
 		IdleTimeout:  defaultIdleTimeout,
 	}
 
-	err := server.ListenAndServe()
-	if err != nil {
-		panic(err)
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("Server failed: %v", err)
+		}
+	}()
+
+	<-quit
+	log.Println("Shutting down server...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), defaultShutdownTimeout)
+	defer cancel()
+
+	if err := server.Shutdown(ctx); err != nil {
+		log.Printf("Server forced to shutdown: %v", err)
+		return
 	}
 }

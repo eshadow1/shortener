@@ -1,13 +1,14 @@
 package service
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 )
 
 type repository interface {
-	Save(key, value string) error
-	Get(key string) (string, error)
+	Save(ctx context.Context, key, value string) error
+	Get(ctx context.Context, key string) (string, error)
 }
 type shortenerService struct {
 	repo repository
@@ -23,10 +24,10 @@ func (*shortenerService) hashToShort(input string) string {
 	return hex.EncodeToString(hash[:])[:8]
 }
 
-func (s *shortenerService) CreateShortUrl(original string) (string, error) {
+func (s *shortenerService) CreateShortUrl(ctx context.Context, original string) (string, error) {
 	short := s.hashToShort(original)
 
-	errSave := s.repo.Save(short, original)
+	errSave := s.repo.Save(ctx, short, original)
 	if errSave != nil {
 		return short, errSave
 	}
@@ -34,6 +35,6 @@ func (s *shortenerService) CreateShortUrl(original string) (string, error) {
 	return short, nil
 }
 
-func (s *shortenerService) GetOriginalURL(short string) (string, error) {
-	return s.repo.Get(short)
+func (s *shortenerService) GetOriginalURL(ctx context.Context, short string) (string, error) {
+	return s.repo.Get(ctx, short)
 }

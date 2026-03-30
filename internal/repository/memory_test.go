@@ -15,7 +15,7 @@ const (
 
 func TestRepository_Get(t *testing.T) {
 	m := NewMemoryRepository()
-	errSave := m.Save(defaultShort, defaultOriginal)
+	errSave := m.Save(t.Context(), defaultShort, defaultOriginal)
 	require.NoError(t, errSave)
 
 	tests := []struct {
@@ -40,7 +40,7 @@ func TestRepository_Get(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			original, errGet := m.Get(test.short)
+			original, errGet := m.Get(t.Context(), test.short)
 			if test.expectedError != nil {
 				assert.Equal(t, test.expectedError, errGet)
 			} else {

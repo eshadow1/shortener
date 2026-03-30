@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"strings"
@@ -10,8 +11,8 @@ import (
 )
 
 type service interface {
-	CreateShortUrl(string) (string, error)
-	GetOriginalURL(string) (string, error)
+	CreateShortUrl(context.Context, string) (string, error)
+	GetOriginalURL(context.Context, string) (string, error)
 }
 
 type handler struct {
@@ -29,7 +30,7 @@ func (h *handler) PostCreate(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	if r.Method != http.MethodPost {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		http.Error(w, "Bad request", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -45,7 +46,7 @@ func (h *handler) PostCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	short, errCreate := h.s.CreateShortUrl(originalURL)
+	short, errCreate := h.s.CreateShortUrl(r.Context(), originalURL)
 	if errCreate != nil {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
@@ -55,7 +56,7 @@ func (h *handler) PostCreate(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	_, err = w.Write([]byte(h.cfg.BaseUrl + "/" + short))
 	if err != nil {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		http.Error(w, "Internal Server", http.StatusInternalServerError)
 		return
 	}
 }
@@ -64,12 +65,12 @@ func (h *handler) GetOrigin(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	if r.Method != http.MethodGet {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		http.Error(w, "Bad request", http.StatusMethodNotAllowed)
 		return
 	}
 
 	short := chi.URLParam(r, "shortURL")
-	originalURL, errGet := h.s.GetOriginalURL(strings.TrimPrefix(short, "/"))
+	originalURL, errGet := h.s.GetOriginalURL(r.Context(), strings.TrimPrefix(short, "/"))
 	if errGet != nil {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return

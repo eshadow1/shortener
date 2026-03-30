@@ -1,37 +1,40 @@
 package repository
 
 import (
-	"fmt"
+	"context"
+	"errors"
 	"sync"
 )
 
+var ErrShortNotFound = errors.New("short not found")
+
 type memoryRepository struct {
-	m  map[string]string
-	mx sync.Mutex
+	matchPairs map[string]string
+	mu         sync.RWMutex
 }
 
 func NewMemoryRepository() *memoryRepository {
 	return &memoryRepository{
-		m:  make(map[string]string),
-		mx: sync.Mutex{},
+		matchPairs: make(map[string]string),
+		mu:         sync.RWMutex{},
 	}
 }
 
-func (m *memoryRepository) Save(short, origin string) error {
-	m.mx.Lock()
-	defer m.mx.Unlock()
+func (m *memoryRepository) Save(_ context.Context, short, origin string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
-	m.m[short] = origin
+	m.matchPairs[short] = origin
 	return nil
 }
 
-func (m *memoryRepository) Get(short string) (string, error) {
-	m.mx.Lock()
-	defer m.mx.Unlock()
+func (m *memoryRepository) Get(_ context.Context, short string) (string, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 
-	if val, ok := m.m[short]; ok {
+	if val, ok := m.matchPairs[short]; ok {
 		return val, nil
 	}
 
-	return "", fmt.Errorf("short not found")
+	return "", ErrShortNotFound
 }
