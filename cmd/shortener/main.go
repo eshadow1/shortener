@@ -26,7 +26,7 @@ const (
 
 func main() {
 	cfg := configs.NewConfig()
-	cfg.ParseWithFlag()
+	cfg.Init()
 
 	r := repository.NewMemoryRepository()
 	s := service.NewShortenerService(r)
