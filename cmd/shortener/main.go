@@ -3,18 +3,19 @@ package main
 import (
 	"context"
 	"errors"
-	"log"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"net/http"
+
 	"github.com/eshadow1/shortener/internal/configs"
 	"github.com/eshadow1/shortener/internal/handler"
+	"github.com/eshadow1/shortener/internal/loggers"
 	"github.com/eshadow1/shortener/internal/repository"
 	"github.com/eshadow1/shortener/internal/service"
-
-	"net/http"
 )
 
 const (
@@ -27,6 +28,12 @@ const (
 func main() {
 	cfg := configs.NewConfig()
 	cfg.Init()
+
+	errCreateLog := loggers.CreateLogger(cfg.LevelLog)
+	if errCreateLog != nil {
+		fmt.Println("Error creating logger:", errCreateLog)
+		return
+	}
 
 	r := repository.NewMemoryRepository()
 	s := service.NewShortenerService(r)
@@ -47,18 +54,18 @@ func main() {
 
 	go func() {
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("Server failed: %v", err)
+			loggers.Log.Fatalf("Server failed: %v", err)
 		}
 	}()
 
 	<-quit
-	log.Println("Shutting down server...")
+	loggers.Log.Infoln("Shutting down server...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), defaultShutdownTimeout)
 	defer cancel()
 
 	if err := server.Shutdown(ctx); err != nil {
-		log.Printf("Server forced to shutdown: %v", err)
+		loggers.Log.Infof("Server forced to shutdown: %v", err)
 		return
 	}
 }
