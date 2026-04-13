@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/eshadow1/shortener/internal/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -32,20 +33,20 @@ func (m *MockRepository) Get(ctx context.Context, key string) (string, error) {
 func TestShortenerService_CreateShortUrl(t *testing.T) {
 	tests := []struct {
 		name          string
-		url           string
-		expectedShort string
+		url           model.OriginalInfo
+		expectedShort model.ShortenInfo
 		expectedError error
 	}{
 		{
 			name:          "success_create",
-			url:           correctURL,
-			expectedShort: correctShort,
+			url:           model.OriginalInfo{OriginalURL: correctURL},
+			expectedShort: model.ShortenInfo{ShortURL: correctShort},
 			expectedError: nil,
 		},
 		{
 			name:          "error_create",
-			url:           "https",
-			expectedShort: "3e194352",
+			url:           model.OriginalInfo{OriginalURL: "https"},
+			expectedShort: model.ShortenInfo{ShortURL: "3e194352"},
 			expectedError: errors.New("don't save"),
 		},
 	}
@@ -70,20 +71,20 @@ func TestShortenerService_CreateShortUrl(t *testing.T) {
 func TestShortenerService_GetShortUrl(t *testing.T) {
 	tests := []struct {
 		name             string
-		short            string
-		expectedOriginal string
+		short            model.ShortenInfo
+		expectedOriginal model.OriginalInfo
 		expectedError    error
 	}{
 		{
 			name:             "success",
-			short:            correctShort,
-			expectedOriginal: correctURL,
+			short:            model.ShortenInfo{ShortURL: correctShort},
+			expectedOriginal: model.OriginalInfo{OriginalURL: correctURL},
 			expectedError:    nil,
 		},
 		{
 			name:             "error_get",
-			short:            "5e056c50",
-			expectedOriginal: "",
+			short:            model.ShortenInfo{ShortURL: "5e056c50"},
+			expectedOriginal: model.OriginalInfo{OriginalURL: ""},
 			expectedError:    errors.New("not found"),
 		},
 	}
