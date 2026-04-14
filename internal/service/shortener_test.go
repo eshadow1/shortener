@@ -30,6 +30,10 @@ func (m *MockRepository) Get(ctx context.Context, key string) (string, error) {
 	return args.String(0), args.Error(1)
 }
 
+func (m *MockRepository) Close() {
+	m.Called()
+}
+
 func TestShortenerService_CreateShortUrl(t *testing.T) {
 	tests := []struct {
 		name          string

@@ -29,13 +29,14 @@ func main() {
 	cfg := configs.NewConfig()
 	cfg.Init()
 
-	errCreateLog := loggers.CreateLogger(cfg.LevelLog)
+	errCreateLog := loggers.CreateLogger(cfg.Log.Level)
 	if errCreateLog != nil {
 		fmt.Println("Error creating logger:", errCreateLog)
 		return
 	}
 
-	r := repository.NewMemoryRepository()
+	r := repository.NewMemoryRepository(cfg.Storage.Path)
+	defer r.Close()
 	s := service.NewShortenerService(r)
 	h := handler.NewHandler(cfg, s)
 

@@ -6,15 +6,25 @@ import (
 )
 
 const (
-	DefaultAddr     = "localhost:8080"
-	DefaultBaseUrl  = "http://localhost:8080"
-	DefaultLevelLog = "info"
+	DefaultAddr        = "localhost:8080"
+	DefaultBaseUrl     = "http://localhost:8080"
+	DefaultLevelLog    = "info"
+	DefaultStoragePath = "./storage.txt"
 )
 
+type StorageConfig struct {
+	Path string
+}
+
+type LogConfig struct {
+	Level string
+}
+
 type Config struct {
-	Addr     string
-	BaseUrl  string
-	LevelLog string
+	Addr    string
+	BaseUrl string
+	Log     LogConfig
+	Storage StorageConfig
 }
 
 func NewConfig() *Config {
@@ -33,14 +43,19 @@ func (c *Config) Init() {
 	}
 
 	if levelLog := os.Getenv("LEVEL_LOG"); levelLog != "" {
-		c.LevelLog = levelLog
+		c.Log.Level = levelLog
+	}
+
+	if storagePath := os.Getenv("FILE_STORAGE_PATH"); storagePath != "" {
+		c.Storage.Path = storagePath
 	}
 }
 
 func (c *Config) parseWithFlag() {
 	flag.StringVar(&c.Addr, "a", DefaultAddr, "host:port")
 	flag.StringVar(&c.BaseUrl, "b", DefaultBaseUrl, "base url")
-	flag.StringVar(&c.LevelLog, "l", DefaultLevelLog, "level log")
+	flag.StringVar(&c.Log.Level, "l", DefaultLevelLog, "level log")
+	flag.StringVar(&c.Storage.Path, "f", DefaultStoragePath, "file storage path")
 
 	flag.Parse()
 }
