@@ -15,7 +15,7 @@ type routerHandler interface {
 
 func InitRouter(h routerHandler) *chi.Mux {
 	rs := chi.NewRouter()
-	rs.Use(loggers.RequestLogger())
+	rs.Use(loggers.RequestLogger(), GzipMiddleware())
 	rs.Get("/{shortURL}", h.GetOrigin)
 	rs.Post("/", h.PostCreate)
 	rs.Post("/api/shorten", h.PostShorten)
