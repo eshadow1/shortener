@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"strconv"
 	"sync"
 
 	"github.com/eshadow1/shortener/internal/loggers"
@@ -31,11 +32,7 @@ func (m *memoryRepository) Save(_ context.Context, short, origin string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	if _, ok := m.matchPairs[short]; !ok {
-		m.matchPairs[short] = origin
-		saveData(m.storagePath, m.matchPairs)
-	}
-
+	m.matchPairs[short] = origin
 	return nil
 }
 
@@ -59,10 +56,10 @@ func saveData(storagePath string, data map[string]string) {
 		return
 	}
 	temp := make([]model.FileStorage, 0, len(data))
-	index := 1
+	index := int64(1)
 	for short, origin := range data {
 		temp = append(temp, model.FileStorage{
-			UUID:     index,
+			UUID:     strconv.FormatInt(index, 10),
 			Short:    short,
 			Original: origin,
 		})
@@ -100,6 +97,10 @@ func loadData(storagePath string) map[string]string {
 	data, errRead := os.ReadFile(storagePath)
 	if errRead != nil {
 		loggers.Log.Errorf("Error reading file %s: %s", storagePath, errRead)
+		return matchPairs
+	}
+
+	if len(data) == 0 {
 		return matchPairs
 	}
 

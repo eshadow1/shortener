@@ -61,7 +61,7 @@ func TestShortenerService_CreateShortUrl(t *testing.T) {
 			mr.On("Save", t.Context(), mock.Anything, mock.Anything).Return(errors.New("don't save"))
 			s := NewShortenerService(mr)
 
-			short, errSave := s.CreateShortUrl(t.Context(), test.url)
+			short, errSave := s.CreateShortURL(t.Context(), test.url)
 			if test.expectedError != nil {
 				assert.Equal(t, test.expectedError, errSave)
 			} else {

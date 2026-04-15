@@ -13,7 +13,7 @@ import (
 )
 
 type service interface {
-	CreateShortUrl(context.Context, model.OriginalInfo) (model.ShortenInfo, error)
+	CreateShortURL(context.Context, model.OriginalInfo) (model.ShortenInfo, error)
 	GetOriginalURL(context.Context, model.ShortenInfo) (model.OriginalInfo, error)
 }
 
@@ -48,15 +48,14 @@ func (h *handler) PostCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	short, errCreate := h.s.CreateShortUrl(r.Context(), model.OriginalInfo{OriginalURL: originalURL})
+	short, errCreate := h.s.CreateShortURL(r.Context(), model.OriginalInfo{OriginalURL: originalURL})
 	if errCreate != nil {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
-
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
-	_, err = w.Write([]byte(h.cfg.BaseUrl + "/" + short.ShortURL))
+	_, err = w.Write([]byte(h.cfg.BaseURL + "/" + short.ShortURL))
 	if err != nil {
 		http.Error(w, "Internal Server", http.StatusInternalServerError)
 		return
@@ -87,20 +86,22 @@ func (h *handler) PostShorten(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	short, errCreate := h.s.CreateShortUrl(r.Context(), req)
+	short, errCreate := h.s.CreateShortURL(r.Context(), req)
 	if errCreate != nil {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
-	short.ShortURL = h.cfg.BaseUrl + "/" + short.ShortURL
+	short.ShortURL = h.cfg.BaseURL + "/" + short.ShortURL
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+
 	bodyResponse, errMarshal := json.Marshal(short)
 	if errMarshal != nil {
 		http.Error(w, "Internal Server", http.StatusInternalServerError)
 		return
 	}
+
+	w.WriteHeader(http.StatusCreated)
 	_, err = w.Write(bodyResponse)
 	if err != nil {
 		http.Error(w, "Internal Server", http.StatusInternalServerError)

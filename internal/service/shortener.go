@@ -27,7 +27,7 @@ func (*shortenerService) hashToShort(input string) string {
 	return hex.EncodeToString(hash[:])[:8]
 }
 
-func (s *shortenerService) CreateShortUrl(ctx context.Context, original model.OriginalInfo) (model.ShortenInfo, error) {
+func (s *shortenerService) CreateShortURL(ctx context.Context, original model.OriginalInfo) (model.ShortenInfo, error) {
 	short := s.hashToShort(original.OriginalURL)
 
 	errSave := s.repo.Save(ctx, short, original.OriginalURL)

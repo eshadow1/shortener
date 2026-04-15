@@ -7,7 +7,7 @@ import (
 
 const (
 	DefaultAddr        = "localhost:8080"
-	DefaultBaseUrl     = "http://localhost:8080"
+	DefaultBaseURL     = "http://localhost:8080"
 	DefaultLevelLog    = "info"
 	DefaultStoragePath = "./storage.txt"
 )
@@ -22,7 +22,7 @@ type LogConfig struct {
 
 type Config struct {
 	Addr    string
-	BaseUrl string
+	BaseURL string
 	Log     LogConfig
 	Storage StorageConfig
 }
@@ -39,7 +39,7 @@ func (c *Config) Init() {
 	}
 
 	if baseUrl := os.Getenv("BASE_URL"); baseUrl != "" {
-		c.BaseUrl = baseUrl
+		c.BaseURL = baseUrl
 	}
 
 	if levelLog := os.Getenv("LEVEL_LOG"); levelLog != "" {
@@ -53,7 +53,7 @@ func (c *Config) Init() {
 
 func (c *Config) parseWithFlag() {
 	flag.StringVar(&c.Addr, "a", DefaultAddr, "host:port")
-	flag.StringVar(&c.BaseUrl, "b", DefaultBaseUrl, "base url")
+	flag.StringVar(&c.BaseURL, "b", DefaultBaseURL, "base url")
 	flag.StringVar(&c.Log.Level, "l", DefaultLevelLog, "level log")
 	flag.StringVar(&c.Storage.Path, "f", DefaultStoragePath, "file storage path")
 

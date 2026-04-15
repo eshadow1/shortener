@@ -32,7 +32,7 @@ func (m *MockService) GetOriginalURL(ctx context.Context, short model.ShortenInf
 	return args.Get(0).(model.OriginalInfo), args.Error(1)
 }
 
-func (m *MockService) CreateShortUrl(ctx context.Context, origin model.OriginalInfo) (model.ShortenInfo, error) {
+func (m *MockService) CreateShortURL(ctx context.Context, origin model.OriginalInfo) (model.ShortenInfo, error) {
 	args := m.Called(ctx, origin)
 	return args.Get(0).(model.ShortenInfo), args.Error(1)
 }
@@ -40,7 +40,7 @@ func (m *MockService) CreateShortUrl(ctx context.Context, origin model.OriginalI
 func TestHandler_GetOrigin(t *testing.T) {
 	cfg := &configs.Config{
 		Addr:    configs.DefaultAddr,
-		BaseUrl: configs.DefaultBaseUrl,
+		BaseURL: configs.DefaultBaseURL,
 	}
 
 	tests := []struct {
@@ -98,7 +98,7 @@ func TestHandler_GetOrigin(t *testing.T) {
 func TestHandler_PostCreate(t *testing.T) {
 	cfg := &configs.Config{
 		Addr:    configs.DefaultAddr,
-		BaseUrl: configs.DefaultBaseUrl,
+		BaseURL: configs.DefaultBaseURL,
 	}
 
 	tests := []struct {
@@ -113,7 +113,7 @@ func TestHandler_PostCreate(t *testing.T) {
 			method:         http.MethodPost,
 			body:           correctURL,
 			expectedStatus: http.StatusCreated,
-			expectedBody:   configs.DefaultBaseUrl + "/" + correctShort,
+			expectedBody:   configs.DefaultBaseURL + "/" + correctShort,
 		},
 		{
 			name:           "bad_method",
@@ -145,8 +145,8 @@ func TestHandler_PostCreate(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			ms := new(MockService)
-			ms.On("CreateShortUrl", t.Context(), model.OriginalInfo{OriginalURL: correctURL}).Return(model.ShortenInfo{ShortURL: correctShort}, nil)
-			ms.On("CreateShortUrl", t.Context(), mock.Anything).Return(model.ShortenInfo{}, errors.New("bad request"))
+			ms.On("CreateShortURL", t.Context(), model.OriginalInfo{OriginalURL: correctURL}).Return(model.ShortenInfo{ShortURL: correctShort}, nil)
+			ms.On("CreateShortURL", t.Context(), mock.Anything).Return(model.ShortenInfo{}, errors.New("bad request"))
 			h := NewHandler(cfg, ms)
 
 			h.PostCreate(w, req)
@@ -163,7 +163,7 @@ func TestHandler_PostCreate(t *testing.T) {
 func TestHandler_PostShorten(t *testing.T) {
 	cfg := &configs.Config{
 		Addr:    configs.DefaultAddr,
-		BaseUrl: configs.DefaultBaseUrl,
+		BaseURL: configs.DefaultBaseURL,
 	}
 
 	tests := []struct {
@@ -182,7 +182,7 @@ func TestHandler_PostShorten(t *testing.T) {
 			headerContentType:   "application/json",
 			expectedStatus:      http.StatusCreated,
 			expectedContentType: "application/json",
-			expectedBody:        fmt.Sprintf("{\"result\":%q}", configs.DefaultBaseUrl+"/"+correctShort),
+			expectedBody:        fmt.Sprintf("{\"result\":%q}", configs.DefaultBaseURL+"/"+correctShort),
 		},
 		{
 			name:                "bad_method",
@@ -229,8 +229,8 @@ func TestHandler_PostShorten(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			ms := new(MockService)
-			ms.On("CreateShortUrl", t.Context(), model.OriginalInfo{OriginalURL: correctURL}).Return(model.ShortenInfo{ShortURL: correctShort}, nil)
-			ms.On("CreateShortUrl", t.Context(), mock.Anything).Return(model.ShortenInfo{}, errors.New("bad request"))
+			ms.On("CreateShortURL", t.Context(), model.OriginalInfo{OriginalURL: correctURL}).Return(model.ShortenInfo{ShortURL: correctShort}, nil)
+			ms.On("CreateShortURL", t.Context(), mock.Anything).Return(model.ShortenInfo{}, errors.New("bad request"))
 			h := NewHandler(cfg, ms)
 
 			h.PostShorten(w, req)
