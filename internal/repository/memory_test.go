@@ -9,12 +9,13 @@ import (
 )
 
 const (
-	defaultOriginal = "https://practicum.yandex.ru/"
-	defaultShort    = "abcdefgh"
+	defaultOriginal    = "https://practicum.yandex.ru/"
+	defaultShort       = "abcdefgh"
+	defaultStoragePath = ""
 )
 
 func TestRepository_Get(t *testing.T) {
-	m := NewMemoryRepository()
+	m := NewMemoryRepository(defaultStoragePath)
 	errSave := m.Save(t.Context(), defaultShort, defaultOriginal)
 	require.NoError(t, errSave)
 
