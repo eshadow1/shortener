@@ -37,6 +37,15 @@ func (m *MockService) CreateShortURL(ctx context.Context, origin model.OriginalI
 	return args.Get(0).(model.ShortenInfo), args.Error(1)
 }
 
+type MockChecker struct {
+	mock.Mock
+}
+
+func (m *MockChecker) CheckDB(ctx context.Context) bool {
+	args := m.Called(ctx)
+	return args.Bool(0)
+}
+
 func TestHandler_GetOrigin(t *testing.T) {
 	cfg := &configs.Config{
 		Addr:    configs.DefaultAddr,
@@ -83,10 +92,13 @@ func TestHandler_GetOrigin(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
+			mc := &MockChecker{}
+			mc.On("CheckDB", mock.Anything).Return(true)
+
 			ms := new(MockService)
 			ms.On("GetOriginalURL", req.Context(), model.ShortenInfo{ShortURL: correctShort}).Return(model.OriginalInfo{OriginalURL: correctURL}, nil)
 			ms.On("GetOriginalURL", req.Context(), mock.Anything).Return(model.OriginalInfo{}, errors.New("short not found"))
-			h := NewHandler(cfg, ms)
+			h := NewHandler(cfg, ms, mc)
 
 			h.GetOrigin(w, req)
 			assert.Equal(t, test.expectedStatus, w.Code)
@@ -144,10 +156,13 @@ func TestHandler_PostCreate(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
+			mc := &MockChecker{}
+			mc.On("CheckDB", mock.Anything).Return(true)
+
 			ms := new(MockService)
 			ms.On("CreateShortURL", t.Context(), model.OriginalInfo{OriginalURL: correctURL}).Return(model.ShortenInfo{ShortURL: correctShort}, nil)
 			ms.On("CreateShortURL", t.Context(), mock.Anything).Return(model.ShortenInfo{}, errors.New("bad request"))
-			h := NewHandler(cfg, ms)
+			h := NewHandler(cfg, ms, mc)
 
 			h.PostCreate(w, req)
 
@@ -228,10 +243,13 @@ func TestHandler_PostShorten(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
+			mc := &MockChecker{}
+			mc.On("CheckDB", mock.Anything).Return(true)
+
 			ms := new(MockService)
 			ms.On("CreateShortURL", t.Context(), model.OriginalInfo{OriginalURL: correctURL}).Return(model.ShortenInfo{ShortURL: correctShort}, nil)
 			ms.On("CreateShortURL", t.Context(), mock.Anything).Return(model.ShortenInfo{}, errors.New("bad request"))
-			h := NewHandler(cfg, ms)
+			h := NewHandler(cfg, ms, mc)
 
 			h.PostShorten(w, req)
 
@@ -240,6 +258,66 @@ func TestHandler_PostShorten(t *testing.T) {
 
 			assert.Equal(t, test.expectedStatus, w.Code)
 			assert.Equal(t, test.expectedContentType, w.Header().Get("Content-Type"))
+			assert.Equal(t, test.expectedBody, string(body))
+		})
+	}
+}
+
+func TestHandler_GetCheckDB(t *testing.T) {
+	cfg := &configs.Config{
+		Addr:    configs.DefaultAddr,
+		BaseURL: configs.DefaultBaseURL,
+	}
+
+	tests := []struct {
+		name           string
+		method         string
+		resultCheck    bool
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:           "success",
+			method:         http.MethodGet,
+			resultCheck:    true,
+			expectedStatus: http.StatusOK,
+			expectedBody:   "OK\n",
+		},
+		{
+			name:           "bad_method",
+			method:         http.MethodPost,
+			resultCheck:    true,
+			expectedStatus: http.StatusMethodNotAllowed,
+			expectedBody:   "Bad request\n",
+		},
+		{
+			name:           "bad_connection",
+			method:         http.MethodGet,
+			resultCheck:    false,
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   "Internal Server\n",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			req := httptest.NewRequestWithContext(t.Context(), test.method, "/ping", http.NoBody)
+			req.Header.Set("Content-Type", "text/plain")
+
+			w := httptest.NewRecorder()
+
+			mc := &MockChecker{}
+			mc.On("CheckDB", mock.Anything).Return(test.resultCheck)
+
+			ms := new(MockService)
+			ms.On("CreateShortURL", t.Context(), mock.Anything).Return(model.ShortenInfo{}, nil)
+			h := NewHandler(cfg, ms, mc)
+
+			h.GetCheckDB(w, req)
+
+			body, err := io.ReadAll(w.Body)
+			require.NoError(t, err)
+
+			assert.Equal(t, test.expectedStatus, w.Code)
 			assert.Equal(t, test.expectedBody, string(body))
 		})
 	}
