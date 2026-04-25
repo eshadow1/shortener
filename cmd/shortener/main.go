@@ -35,10 +35,16 @@ func main() {
 		return
 	}
 
+	pdb, errCreate := repository.NewPostgreSQLRepository(cfg.Storage)
+	if errCreate != nil {
+		loggers.Log.Errorf("error creating connection db: %v", errCreate)
+		return
+	}
 	r := repository.NewMemoryRepository(cfg.Storage.Path)
 	defer r.Close()
 	s := service.NewShortenerService(r)
-	h := handler.NewHandler(cfg, s)
+	c := service.NewCheckerService(pdb)
+	h := handler.NewHandler(cfg, s, c)
 
 	rs := handler.InitRouter(h)
 

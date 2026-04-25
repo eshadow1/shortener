@@ -6,14 +6,16 @@ import (
 )
 
 const (
-	DefaultAddr        = "localhost:8080"
-	DefaultBaseURL     = "http://localhost:8080"
-	DefaultLevelLog    = "info"
-	DefaultStoragePath = "./storage.txt"
+	DefaultAddr          = "localhost:8080"
+	DefaultBaseURL       = "http://localhost:8080"
+	DefaultLevelLog      = "info"
+	DefaultStoragePath   = "./storage.txt"
+	DefaultStoragePathDB = ""
 )
 
 type StorageConfig struct {
-	Path string
+	Path   string
+	PathDB string
 }
 
 type LogConfig struct {
@@ -49,6 +51,10 @@ func (c *Config) Init() {
 	if storagePath := os.Getenv("FILE_STORAGE_PATH"); storagePath != "" {
 		c.Storage.Path = storagePath
 	}
+
+	if pathDB := os.Getenv("DATABASE_DSN"); pathDB != "" {
+		c.Storage.PathDB = pathDB
+	}
 }
 
 func (c *Config) parseWithFlag() {
@@ -56,6 +62,7 @@ func (c *Config) parseWithFlag() {
 	flag.StringVar(&c.BaseURL, "b", DefaultBaseURL, "base url")
 	flag.StringVar(&c.Log.Level, "l", DefaultLevelLog, "level log")
 	flag.StringVar(&c.Storage.Path, "f", DefaultStoragePath, "file storage path")
+	flag.StringVar(&c.Storage.PathDB, "d", DefaultStoragePathDB, "file storage path")
 
 	flag.Parse()
 }

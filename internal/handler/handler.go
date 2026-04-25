@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/eshadow1/shortener/internal/configs"
 	"github.com/eshadow1/shortener/internal/model"
@@ -17,15 +18,22 @@ type service interface {
 	GetOriginalURL(context.Context, model.ShortenInfo) (model.OriginalInfo, error)
 }
 
+type checker interface {
+	CheckDB(ctx context.Context) bool
+}
+
 type handler struct {
 	cfg *configs.Config
 	s   service
+	c   checker
 }
 
-func NewHandler(cfg *configs.Config, svc service) *handler {
+func NewHandler(cfg *configs.Config, svc service, check checker) *handler {
 	return &handler{
 		cfg: cfg,
-		s:   svc}
+		s:   svc,
+		c:   check,
+	}
 }
 
 func (h *handler) PostCreate(w http.ResponseWriter, r *http.Request) {
@@ -126,4 +134,24 @@ func (h *handler) GetOrigin(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Location", originalURL.OriginalURL)
 	w.WriteHeader(http.StatusTemporaryRedirect)
+}
+
+func (h *handler) GetCheckDB(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
+	if r.Method != http.MethodGet {
+		http.Error(w, "Bad request", http.StatusMethodNotAllowed)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+
+	isConnect := h.c.CheckDB(ctx)
+	if !isConnect {
+		http.Error(w, "Internal Server", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }

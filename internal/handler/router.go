@@ -10,6 +10,7 @@ type routerHandler interface {
 	GetOrigin(w http.ResponseWriter, r *http.Request)
 	PostCreate(w http.ResponseWriter, r *http.Request)
 	PostShorten(w http.ResponseWriter, r *http.Request)
+	GetCheckDB(w http.ResponseWriter, r *http.Request)
 }
 
 func InitRouter(h routerHandler) *chi.Mux {
@@ -18,5 +19,6 @@ func InitRouter(h routerHandler) *chi.Mux {
 	rs.Get("/{shortURL}", h.GetOrigin)
 	rs.Post("/", h.PostCreate)
 	rs.Post("/api/shorten", h.PostShorten)
+	rs.Get("/ping", h.GetCheckDB)
 	return rs
 }
