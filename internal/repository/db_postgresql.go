@@ -31,11 +31,6 @@ func NewPostgreSQLRepository(cfg configs.StorageConfig) (*PostgreSQLRepository, 
 	db.SetMaxIdleConns(defaultMaxIdleConnections)
 	db.SetConnMaxLifetime(defaultConnMaxLifetime)
 
-	if errConn := db.Ping(); errConn != nil {
-		loggers.Log.Errorf("Ошибка при подключении PostgreSQL: %v", errConn)
-		return nil, errConn
-	}
-
 	return &PostgreSQLRepository{
 		db: db,
 	}, nil
