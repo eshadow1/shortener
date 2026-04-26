@@ -6,16 +6,17 @@ import (
 )
 
 const (
+	DefaultEmptySting    = ""
 	DefaultAddr          = "localhost:8080"
 	DefaultBaseURL       = "http://localhost:8080"
 	DefaultLevelLog      = "info"
-	DefaultStoragePath   = "./storage.txt"
-	DefaultStoragePathDB = ""
+	DefaultMigrationPath = "./migrations"
 )
 
 type StorageConfig struct {
-	Path   string
-	PathDB string
+	Path           string
+	PathDB         string
+	PathMigrations string
 }
 
 type LogConfig struct {
@@ -55,14 +56,18 @@ func (c *Config) Init() {
 	if pathDB := os.Getenv("DATABASE_DSN"); pathDB != "" {
 		c.Storage.PathDB = pathDB
 	}
+	if pathMigration := os.Getenv("MIGRATION_PATH"); pathMigration != "" {
+		c.Storage.PathMigrations = pathMigration
+	}
 }
 
 func (c *Config) parseWithFlag() {
 	flag.StringVar(&c.Addr, "a", DefaultAddr, "host:port")
 	flag.StringVar(&c.BaseURL, "b", DefaultBaseURL, "base url")
 	flag.StringVar(&c.Log.Level, "l", DefaultLevelLog, "level log")
-	flag.StringVar(&c.Storage.Path, "f", DefaultStoragePath, "file storage path")
-	flag.StringVar(&c.Storage.PathDB, "d", DefaultStoragePathDB, "file storage path")
+	flag.StringVar(&c.Storage.Path, "f", DefaultEmptySting, "file storage path")
+	flag.StringVar(&c.Storage.PathDB, "d", DefaultEmptySting, "file storage path")
+	flag.StringVar(&c.Storage.PathMigrations, "m", DefaultMigrationPath, "migrations path")
 
 	flag.Parse()
 }

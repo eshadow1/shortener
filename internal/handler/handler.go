@@ -154,5 +154,9 @@ func (h *handler) GetCheckDB(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK\n"))
+	_, err := w.Write([]byte("OK\n"))
+	if err != nil {
+		http.Error(w, "Internal Server", http.StatusInternalServerError)
+		return
+	}
 }

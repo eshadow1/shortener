@@ -23,6 +23,11 @@ func NewCheckerService(r repoChecker) *CheckerService {
 }
 
 func (cs *CheckerService) CheckDB(ctx context.Context) bool {
+	if cs.repo == nil {
+		loggers.Log.Info("Not used database")
+		return false
+	}
+
 	if err := cs.repo.PingContext(ctx); err != nil {
 		loggers.Log.Info("Not connected to database")
 		return false
