@@ -32,9 +32,9 @@ func (m *MockService) GetOriginalURL(ctx context.Context, short model.ShortenInf
 	return args.Get(0).(model.OriginalInfo), args.Error(1)
 }
 
-func (m *MockService) CreateShortURL(ctx context.Context, origin model.OriginalInfo) (model.ShortenInfo, error) {
+func (m *MockService) CreateShortURL(ctx context.Context, origin []model.OriginalInfo) ([]model.ShortenInfo, error) {
 	args := m.Called(ctx, origin)
-	return args.Get(0).(model.ShortenInfo), args.Error(1)
+	return args.Get(0).([]model.ShortenInfo), args.Error(1)
 }
 
 type MockChecker struct {
@@ -160,8 +160,8 @@ func TestHandler_PostCreate(t *testing.T) {
 			mc.On("CheckDB", mock.Anything).Return(true)
 
 			ms := new(MockService)
-			ms.On("CreateShortURL", t.Context(), model.OriginalInfo{OriginalURL: correctURL}).Return(model.ShortenInfo{ShortURL: correctShort}, nil)
-			ms.On("CreateShortURL", t.Context(), mock.Anything).Return(model.ShortenInfo{}, errors.New("bad request"))
+			ms.On("CreateShortURL", t.Context(), []model.OriginalInfo{{OriginalURL: correctURL}}).Return([]model.ShortenInfo{{ShortURL: correctShort}}, nil)
+			ms.On("CreateShortURL", t.Context(), mock.Anything).Return([]model.ShortenInfo{}, errors.New("bad request"))
 			h := NewHandler(cfg, ms, mc)
 
 			h.PostCreate(w, req)
@@ -247,11 +247,99 @@ func TestHandler_PostShorten(t *testing.T) {
 			mc.On("CheckDB", mock.Anything).Return(true)
 
 			ms := new(MockService)
-			ms.On("CreateShortURL", t.Context(), model.OriginalInfo{OriginalURL: correctURL}).Return(model.ShortenInfo{ShortURL: correctShort}, nil)
+			ms.On("CreateShortURL", t.Context(), []model.OriginalInfo{{OriginalURL: correctURL}}).Return([]model.ShortenInfo{{ShortURL: correctShort}}, nil)
 			ms.On("CreateShortURL", t.Context(), mock.Anything).Return(model.ShortenInfo{}, errors.New("bad request"))
 			h := NewHandler(cfg, ms, mc)
 
 			h.PostShorten(w, req)
+
+			body, err := io.ReadAll(w.Body)
+			require.NoError(t, err)
+
+			assert.Equal(t, test.expectedStatus, w.Code)
+			assert.Equal(t, test.expectedContentType, w.Header().Get("Content-Type"))
+			assert.Equal(t, test.expectedBody, string(body))
+		})
+	}
+}
+
+func TestHandler_PostShortenBatch(t *testing.T) {
+	cfg := &configs.Config{
+		Addr:    configs.DefaultAddr,
+		BaseURL: configs.DefaultBaseURL,
+	}
+
+	tests := []struct {
+		name                string
+		method              string
+		body                string
+		headerContentType   string
+		expectedStatus      int
+		expectedContentType string
+		expectedBody        string
+	}{
+		{
+			name:                "success",
+			method:              http.MethodPost,
+			body:                fmt.Sprintf("[{\"original_url\":%q,\"correlation_id\":\"1\"}]", correctURL),
+			headerContentType:   "application/json",
+			expectedStatus:      http.StatusCreated,
+			expectedContentType: "application/json",
+			expectedBody:        fmt.Sprintf("[{\"short_url\":%q,\"correlation_id\":\"1\"}]", configs.DefaultBaseURL+"/"+correctShort),
+		},
+		{
+			name:                "bad_method",
+			method:              http.MethodGet,
+			body:                fmt.Sprintf("{\"url\":%q}", correctURL),
+			headerContentType:   "application/json",
+			expectedStatus:      http.StatusMethodNotAllowed,
+			expectedContentType: "text/plain; charset=utf-8",
+			expectedBody:        "Bad request\n",
+		},
+		{
+			name:                "bad_body",
+			method:              http.MethodPost,
+			body:                "",
+			headerContentType:   "application/json",
+			expectedStatus:      http.StatusBadRequest,
+			expectedContentType: "text/plain; charset=utf-8",
+			expectedBody:        "Bad request\n",
+		},
+		{
+			name:                "error_create_short_url",
+			method:              http.MethodPost,
+			body:                "practicum.yandex.ru",
+			headerContentType:   "application/json",
+			expectedStatus:      http.StatusBadRequest,
+			expectedContentType: "text/plain; charset=utf-8",
+			expectedBody:        "Bad request\n",
+		},
+		{
+			name:                "error_content_type",
+			method:              http.MethodPost,
+			body:                "practicum.yandex.ru",
+			headerContentType:   "application/text",
+			expectedStatus:      http.StatusBadRequest,
+			expectedContentType: "text/plain; charset=utf-8",
+			expectedBody:        "Bad request\n",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			req := httptest.NewRequestWithContext(t.Context(), test.method, "/api/shorten/batch", strings.NewReader(test.body))
+			req.Header.Set("Content-Type", test.headerContentType)
+
+			w := httptest.NewRecorder()
+
+			mc := &MockChecker{}
+			mc.On("CheckDB", mock.Anything).Return(true)
+
+			ms := new(MockService)
+			ms.On("CreateShortURL", t.Context(), []model.OriginalInfo{{OriginalURL: correctURL, CorrelationID: "1"}}).Return([]model.ShortenInfo{{ShortURL: correctShort, CorrelationID: "1"}}, nil)
+			ms.On("CreateShortURL", t.Context(), mock.Anything).Return(model.ShortenInfo{}, errors.New("bad request"))
+			h := NewHandler(cfg, ms, mc)
+
+			h.PostShortenBatch(w, req)
 
 			body, err := io.ReadAll(w.Body)
 			require.NoError(t, err)

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/eshadow1/shortener/internal/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -16,7 +17,8 @@ const (
 
 func TestRepository_Get(t *testing.T) {
 	m := NewMemoryRepository(defaultStoragePath)
-	errSave := m.Save(t.Context(), defaultShort, defaultOriginal)
+
+	errSave := m.Save(t.Context(), []model.URLInfo{{ShortURL: defaultShort, OriginalURL: defaultOriginal}})
 	require.NoError(t, errSave)
 
 	tests := []struct {

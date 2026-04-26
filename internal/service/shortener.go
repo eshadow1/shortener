@@ -9,7 +9,7 @@ import (
 )
 
 type repository interface {
-	Save(ctx context.Context, key, value string) error
+	Save(ctx context.Context, values []model.URLInfo) error
 	Get(ctx context.Context, key string) (string, error)
 	Close()
 }
@@ -27,19 +27,31 @@ func (*shortenerService) hashToShort(input string) string {
 	return hex.EncodeToString(hash[:])[:8]
 }
 
-func (s *shortenerService) CreateShortURL(ctx context.Context, original model.OriginalInfo) (model.ShortenInfo, error) {
-	short := s.hashToShort(original.OriginalURL)
+func (s *shortenerService) CreateShortURL(ctx context.Context, originals []model.OriginalInfo) ([]model.ShortenInfo, error) {
+	shortens := make([]model.ShortenInfo, 0, len(originals))
+	urlsInfo := make([]model.URLInfo, 0, len(originals))
+	for _, original := range originals {
+		short := s.hashToShort(original.OriginalURL)
 
-	errSave := s.repo.Save(ctx, short, original.OriginalURL)
-	if errSave != nil {
-		return model.ShortenInfo{
-			ShortURL: short,
-		}, errSave
+		shortens = append(shortens, model.ShortenInfo{
+			ShortURL:      short,
+			CorrelationID: original.CorrelationID,
+		})
+
+		urlsInfo = append(urlsInfo, model.URLInfo{
+			OriginalURL: original.OriginalURL,
+			ShortURL:    short,
+		})
 	}
 
-	return model.ShortenInfo{
-		ShortURL: short,
-	}, nil
+	if len(urlsInfo) != 0 {
+		errSave := s.repo.Save(ctx, urlsInfo)
+		if errSave != nil {
+			return shortens, errSave
+		}
+	}
+
+	return shortens, nil
 }
 
 func (s *shortenerService) GetOriginalURL(ctx context.Context, short model.ShortenInfo) (model.OriginalInfo, error) {

@@ -14,7 +14,7 @@ import (
 )
 
 type service interface {
-	CreateShortURL(context.Context, model.OriginalInfo) (model.ShortenInfo, error)
+	CreateShortURL(context.Context, []model.OriginalInfo) ([]model.ShortenInfo, error)
 	GetOriginalURL(context.Context, model.ShortenInfo) (model.OriginalInfo, error)
 }
 
@@ -56,14 +56,14 @@ func (h *handler) PostCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	short, errCreate := h.s.CreateShortURL(r.Context(), model.OriginalInfo{OriginalURL: originalURL})
+	short, errCreate := h.s.CreateShortURL(r.Context(), []model.OriginalInfo{{OriginalURL: originalURL}})
 	if errCreate != nil {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
-	_, err = w.Write([]byte(h.cfg.BaseURL + "/" + short.ShortURL))
+	_, err = w.Write([]byte(h.cfg.BaseURL + "/" + short[0].ShortURL))
 	if err != nil {
 		http.Error(w, "Internal Server", http.StatusInternalServerError)
 		return
@@ -94,16 +94,69 @@ func (h *handler) PostShorten(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	short, errCreate := h.s.CreateShortURL(r.Context(), req)
+	shorts, errCreate := h.s.CreateShortURL(r.Context(), []model.OriginalInfo{req})
 	if errCreate != nil {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
+
+	short := shorts[0]
 	short.ShortURL = h.cfg.BaseURL + "/" + short.ShortURL
 
 	w.Header().Set("Content-Type", "application/json")
 
-	bodyResponse, errMarshal := json.Marshal(short)
+	bodyResponse, errMarshal := json.Marshal(map[string]string{"result": short.ShortURL})
+	if errMarshal != nil {
+		http.Error(w, "Internal Server", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	_, err = w.Write(bodyResponse)
+	if err != nil {
+		http.Error(w, "Internal Server", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (h *handler) PostShortenBatch(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
+	if r.Method != http.MethodPost {
+		http.Error(w, "Bad request", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if r.Header.Get("Content-Type") != "application/json" {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+	var req []model.OriginalInfo
+	errUnmarshal := json.Unmarshal(body, &req)
+	if errUnmarshal != nil {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	shorts, errCreate := h.s.CreateShortURL(r.Context(), req)
+	if errCreate != nil {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	for i, short := range shorts {
+		shorts[i].ShortURL = h.cfg.BaseURL + "/" + short.ShortURL
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	bodyResponse, errMarshal := json.Marshal(shorts)
 	if errMarshal != nil {
 		http.Error(w, "Internal Server", http.StatusInternalServerError)
 		return

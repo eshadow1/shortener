@@ -28,11 +28,13 @@ func NewMemoryRepository(storagePath string) *memoryRepository {
 	}
 }
 
-func (m *memoryRepository) Save(_ context.Context, short, origin string) error {
+func (m *memoryRepository) Save(_ context.Context, values []model.URLInfo) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.matchPairs[short] = origin
+	for _, value := range values {
+		m.matchPairs[value.ShortURL] = value.OriginalURL
+	}
 	return nil
 }
 

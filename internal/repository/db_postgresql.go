@@ -9,6 +9,7 @@ import (
 
 	"github.com/eshadow1/shortener/internal/configs"
 	"github.com/eshadow1/shortener/internal/loggers"
+	"github.com/eshadow1/shortener/internal/model"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -22,11 +23,11 @@ const (
 	defaultConnMaxLifetime    = 1 * time.Minute
 )
 
-type PostgreSQLRepository struct {
+type postgreSQLRepository struct {
 	db *sql.DB
 }
 
-func NewPostgreSQLRepository(cfg configs.StorageConfig) (*PostgreSQLRepository, error) {
+func NewPostgreSQLRepository(cfg configs.StorageConfig) (*postgreSQLRepository, error) {
 	db, errOpen := sql.Open("postgres", cfg.PathDB)
 	if errOpen != nil {
 		loggers.Log.Errorf("Ошибка в создании PostgreSQL DB: %v", errOpen)
@@ -43,35 +44,42 @@ func NewPostgreSQLRepository(cfg configs.StorageConfig) (*PostgreSQLRepository, 
 	}
 	loggers.Log.Info("Миграция выполнена")
 
-	return &PostgreSQLRepository{
+	return &postgreSQLRepository{
 		db: db,
 	}, nil
 }
 
-func (repo *PostgreSQLRepository) PingContext(ctx context.Context) error {
+func (repo *postgreSQLRepository) PingContext(ctx context.Context) error {
 	return repo.db.PingContext(ctx)
 }
 
-func (repo *PostgreSQLRepository) Save(ctx context.Context, key, value string) error {
+func (repo *postgreSQLRepository) Save(ctx context.Context, values []model.URLInfo) error {
 	const query = `
         INSERT INTO shorten (shorten_url, original_url)
         VALUES ($1, $2)
         RETURNING id
     `
 
-	var id int64
-	err := repo.db.QueryRowContext(ctx, query, key, value).Scan(&id)
-	if err != nil {
-		if pqErr := (*pq.Error)(nil); errors.As(err, &pqErr) && pqErr.Code == "23505" {
-			return nil
-		}
-		return fmt.Errorf("failed to insert URL: %w", err)
+	tx, errBegin := repo.db.BeginTx(ctx, nil)
+	if errBegin != nil {
+		return errBegin
 	}
 
-	return nil
+	for _, value := range values {
+		var id int64
+		err := tx.QueryRowContext(ctx, query, value.ShortURL, value.OriginalURL).Scan(&id)
+		if err != nil {
+			if pqErr := (*pq.Error)(nil); errors.As(err, &pqErr) && pqErr.Code == "23505" {
+				return nil
+			}
+			return fmt.Errorf("failed to insert URL: %w", err)
+		}
+	}
+
+	return tx.Commit()
 }
 
-func (repo *PostgreSQLRepository) Get(ctx context.Context, key string) (string, error) {
+func (repo *postgreSQLRepository) Get(ctx context.Context, key string) (string, error) {
 	const query = `
         SELECT original_url 
         FROM shorten 
@@ -90,7 +98,7 @@ func (repo *PostgreSQLRepository) Get(ctx context.Context, key string) (string, 
 	return shortenURL, nil
 }
 
-func (repo *PostgreSQLRepository) Close() {
+func (repo *postgreSQLRepository) Close() {
 	repo.db.Close()
 }
 

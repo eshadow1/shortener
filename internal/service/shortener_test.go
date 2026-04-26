@@ -20,8 +20,8 @@ type MockRepository struct {
 	mock.Mock
 }
 
-func (m *MockRepository) Save(ctx context.Context, key, value string) error {
-	args := m.Called(ctx, key, value)
+func (m *MockRepository) Save(ctx context.Context, values []model.URLInfo) error {
+	args := m.Called(ctx, values)
 	return args.Error(0)
 }
 
@@ -37,27 +37,27 @@ func (m *MockRepository) Close() {
 func TestShortenerService_CreateShortUrl(t *testing.T) {
 	tests := []struct {
 		name          string
-		url           model.OriginalInfo
-		expectedShort model.ShortenInfo
+		url           []model.OriginalInfo
+		expectedShort []model.ShortenInfo
 		expectedError error
 	}{
 		{
 			name:          "success_create",
-			url:           model.OriginalInfo{OriginalURL: correctURL},
-			expectedShort: model.ShortenInfo{ShortURL: correctShort},
+			url:           []model.OriginalInfo{{OriginalURL: correctURL}},
+			expectedShort: []model.ShortenInfo{{ShortURL: correctShort}},
 			expectedError: nil,
 		},
 		{
 			name:          "error_create",
-			url:           model.OriginalInfo{OriginalURL: "https"},
-			expectedShort: model.ShortenInfo{ShortURL: "3e194352"},
+			url:           []model.OriginalInfo{{OriginalURL: "https"}},
+			expectedShort: []model.ShortenInfo{{ShortURL: "3e194352"}},
 			expectedError: errors.New("don't save"),
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			mr := new(MockRepository)
-			mr.On("Save", t.Context(), correctShort, correctURL).Return(nil)
+			mr.On("Save", t.Context(), []model.URLInfo{{ShortURL: correctShort, OriginalURL: correctURL}}).Return(nil)
 			mr.On("Save", t.Context(), mock.Anything, mock.Anything).Return(errors.New("don't save"))
 			s := NewShortenerService(mr)
 
