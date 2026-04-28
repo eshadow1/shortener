@@ -12,17 +12,17 @@ type repoChecker interface {
 	PingContext(ctx context.Context) error
 }
 
-type CheckerService struct {
+type checkerService struct {
 	repo repoChecker
 }
 
-func NewCheckerService(r repoChecker) *CheckerService {
-	return &CheckerService{
+func NewCheckerService(r repoChecker) *checkerService {
+	return &checkerService{
 		repo: r,
 	}
 }
 
-func (cs *CheckerService) CheckDB(ctx context.Context) bool {
+func (cs *checkerService) CheckDB(ctx context.Context) bool {
 	if cs.repo == nil {
 		loggers.Log.Info("Not used database")
 		return false

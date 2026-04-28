@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -56,13 +57,18 @@ func (h *handler) PostCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	status := http.StatusCreated
 	short, errCreate := h.s.CreateShortURL(r.Context(), []model.OriginalInfo{{OriginalURL: originalURL}})
 	if errCreate != nil {
-		http.Error(w, "Bad request", http.StatusBadRequest)
-		return
+		if _, ok := errors.AsType[*model.CustomPostgresError](errCreate); ok {
+			status = http.StatusConflict
+		} else {
+			http.Error(w, "Bad request", http.StatusBadRequest)
+			return
+		}
 	}
 	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(status)
 	_, err = w.Write([]byte(h.cfg.BaseURL + "/" + short[0].ShortURL))
 	if err != nil {
 		http.Error(w, "Internal Server", http.StatusInternalServerError)
@@ -94,10 +100,15 @@ func (h *handler) PostShorten(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	status := http.StatusCreated
 	shorts, errCreate := h.s.CreateShortURL(r.Context(), []model.OriginalInfo{req})
 	if errCreate != nil {
-		http.Error(w, "Bad request", http.StatusBadRequest)
-		return
+		if _, ok := errors.AsType[*model.CustomPostgresError](errCreate); ok {
+			status = http.StatusConflict
+		} else {
+			http.Error(w, "Bad request", http.StatusBadRequest)
+			return
+		}
 	}
 
 	short := shorts[0]
@@ -111,7 +122,7 @@ func (h *handler) PostShorten(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(status)
 	_, err = w.Write(bodyResponse)
 	if err != nil {
 		http.Error(w, "Internal Server", http.StatusInternalServerError)

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/eshadow1/shortener/internal/configs"
@@ -17,10 +18,12 @@ import (
 )
 
 const (
-	defaultDriver             = "postgres"
-	defaultMaxIdleConnections = 5
-	defaultMaxOpenConnections = 20
-	defaultConnMaxLifetime    = 1 * time.Minute
+	defaultDriver               = "postgres"
+	defaultMaxIdleConnections   = 5
+	defaultMaxOpenConnections   = 20
+	defaultConnMaxLifetime      = 1 * time.Minute
+	codePostgresDuplicateInsert = "23505"
+	errorNoRows                 = "no rows in result set"
 )
 
 type postgreSQLRepository struct {
@@ -56,8 +59,9 @@ func (repo *postgreSQLRepository) PingContext(ctx context.Context) error {
 func (repo *postgreSQLRepository) Save(ctx context.Context, values []model.URLInfo) error {
 	const query = `
         INSERT INTO shorten (shorten_url, original_url)
-        VALUES ($1, $2)
-        RETURNING id
+        VALUES ($1, $2) 
+        ON CONFLICT (original_url) DO NOTHING
+		RETURNING id
     `
 
 	tx, errBegin := repo.db.BeginTx(ctx, nil)
@@ -67,12 +71,22 @@ func (repo *postgreSQLRepository) Save(ctx context.Context, values []model.URLIn
 
 	for _, value := range values {
 		var id int64
-		err := tx.QueryRowContext(ctx, query, value.ShortURL, value.OriginalURL).Scan(&id)
-		if err != nil {
-			if pqErr := (*pq.Error)(nil); errors.As(err, &pqErr) && pqErr.Code == "23505" {
-				return nil
+		errTransaction := tx.QueryRowContext(ctx, query, value.ShortURL, value.OriginalURL).Scan(&id)
+		if errTransaction != nil {
+			if pqErr := (*pq.Error)(nil); errors.As(errTransaction, &pqErr) && pqErr.Code == codePostgresDuplicateInsert {
+				return &model.CustomPostgresError{Message: "value already exists: ", Err: errTransaction}
 			}
-			return fmt.Errorf("failed to insert URL: %w", err)
+
+			if strings.Contains(errTransaction.Error(), errorNoRows) {
+				return &model.CustomPostgresError{Message: "value already exists: ", Err: errTransaction}
+			}
+
+			if errRollBack := tx.Rollback(); errRollBack != nil {
+				loggers.Log.Errorf("failed insert transaction: %v", errTransaction)
+				return errRollBack
+			}
+
+			return fmt.Errorf("failed to insert URL: %w", errTransaction)
 		}
 	}
 
