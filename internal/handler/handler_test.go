@@ -13,6 +13,7 @@ import (
 	"github.com/eshadow1/shortener/internal/configs"
 	"github.com/eshadow1/shortener/internal/loggers"
 	"github.com/eshadow1/shortener/internal/model"
+	mockhandler "github.com/eshadow1/shortener/mocks/handler"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -23,29 +24,6 @@ const (
 	correctShort = "42b3e75f"
 	correctURL   = "https://practicum.yandex.ru/"
 )
-
-type MockService struct {
-	mock.Mock
-}
-
-func (m *MockService) GetOriginalURL(ctx context.Context, short model.ShortenInfo) (model.OriginalInfo, error) {
-	args := m.Called(ctx, short)
-	return args.Get(0).(model.OriginalInfo), args.Error(1)
-}
-
-func (m *MockService) CreateShortURL(ctx context.Context, origin []model.OriginalInfo) ([]model.ShortenInfo, error) {
-	args := m.Called(ctx, origin)
-	return args.Get(0).([]model.ShortenInfo), args.Error(1)
-}
-
-type MockChecker struct {
-	mock.Mock
-}
-
-func (m *MockChecker) ConnectDB(ctx context.Context) error {
-	args := m.Called(ctx)
-	return args.Error(0)
-}
 
 func TestHandler_GetOrigin(t *testing.T) {
 	cfg := &configs.Config{
@@ -93,12 +71,12 @@ func TestHandler_GetOrigin(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
-			mc := &MockChecker{}
-			mc.On("ConnectDB", mock.Anything).Return(true)
+			mc := mockhandler.NewMockChecker(t)
+			mc.On("ConnectDB", mock.Anything).Return(true).Maybe()
 
-			ms := new(MockService)
-			ms.On("GetOriginalURL", req.Context(), model.ShortenInfo{ShortURL: correctShort}).Return(model.OriginalInfo{OriginalURL: correctURL}, nil)
-			ms.On("GetOriginalURL", req.Context(), mock.Anything).Return(model.OriginalInfo{}, errors.New("short not found"))
+			ms := mockhandler.NewMockService(t)
+			ms.On("GetOriginalURL", req.Context(), model.ShortenInfo{ShortURL: correctShort}).Return(model.OriginalInfo{OriginalURL: correctURL}, nil).Maybe()
+			ms.On("GetOriginalURL", req.Context(), mock.Anything).Return(model.OriginalInfo{}, errors.New("short not found")).Maybe()
 			h := NewHandler(cfg, ms, mc)
 
 			h.GetOrigin(w, req)
@@ -157,12 +135,12 @@ func TestHandler_PostCreate(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
-			mc := &MockChecker{}
-			mc.On("ConnectDB", mock.Anything).Return(nil)
+			mc := mockhandler.NewMockChecker(t)
+			mc.On("ConnectDB", mock.Anything).Return(nil).Maybe()
 
-			ms := new(MockService)
-			ms.On("CreateShortURL", t.Context(), []model.OriginalInfo{{OriginalURL: correctURL}}).Return([]model.ShortenInfo{{ShortURL: correctShort}}, nil)
-			ms.On("CreateShortURL", t.Context(), mock.Anything).Return([]model.ShortenInfo{}, errors.New("bad request"))
+			ms := mockhandler.NewMockService(t)
+			ms.On("CreateShortURL", t.Context(), []model.OriginalInfo{{OriginalURL: correctURL}}).Return([]model.ShortenInfo{{ShortURL: correctShort}}, nil).Maybe()
+			ms.On("CreateShortURL", t.Context(), mock.Anything).Return([]model.ShortenInfo{}, errors.New("bad request")).Maybe()
 			h := NewHandler(cfg, ms, mc)
 
 			h.PostCreate(w, req)
@@ -244,12 +222,12 @@ func TestHandler_PostShorten(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
-			mc := &MockChecker{}
-			mc.On("ConnectDB", mock.Anything).Return(nil)
+			mc := mockhandler.NewMockChecker(t)
+			mc.On("ConnectDB", mock.Anything).Return(nil).Maybe()
 
-			ms := new(MockService)
-			ms.On("CreateShortURL", t.Context(), []model.OriginalInfo{{OriginalURL: correctURL}}).Return([]model.ShortenInfo{{ShortURL: correctShort}}, nil)
-			ms.On("CreateShortURL", t.Context(), mock.Anything).Return(model.ShortenInfo{}, errors.New("bad request"))
+			ms := mockhandler.NewMockService(t)
+			ms.On("CreateShortURL", t.Context(), []model.OriginalInfo{{OriginalURL: correctURL}}).Return([]model.ShortenInfo{{ShortURL: correctShort}}, nil).Maybe()
+			ms.On("CreateShortURL", t.Context(), mock.Anything).Return(model.ShortenInfo{}, errors.New("bad request")).Maybe()
 			h := NewHandler(cfg, ms, mc)
 
 			h.PostShorten(w, req)
@@ -332,12 +310,12 @@ func TestHandler_PostShortenBatch(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
-			mc := &MockChecker{}
-			mc.On("ConnectDB", mock.Anything).Return(nil)
+			mc := mockhandler.NewMockChecker(t)
+			mc.On("ConnectDB", mock.Anything).Return(nil).Maybe()
 
-			ms := new(MockService)
-			ms.On("CreateShortURL", t.Context(), []model.OriginalInfo{{OriginalURL: correctURL, CorrelationID: "1"}}).Return([]model.ShortenInfo{{ShortURL: correctShort, CorrelationID: "1"}}, nil)
-			ms.On("CreateShortURL", t.Context(), mock.Anything).Return(model.ShortenInfo{}, errors.New("bad request"))
+			ms := mockhandler.NewMockService(t)
+			ms.On("CreateShortURL", t.Context(), []model.OriginalInfo{{OriginalURL: correctURL, CorrelationID: "1"}}).Return([]model.ShortenInfo{{ShortURL: correctShort, CorrelationID: "1"}}, nil).Maybe()
+			ms.On("CreateShortURL", t.Context(), mock.Anything).Return(model.ShortenInfo{}, errors.New("bad request")).Maybe()
 			h := NewHandler(cfg, ms, mc)
 
 			h.PostShortenBatch(w, req)
@@ -396,11 +374,11 @@ func TestHandler_GetCheckDB(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
-			mc := &MockChecker{}
-			mc.On("ConnectDB", mock.Anything).Return(test.resultCheck)
+			mc := mockhandler.NewMockChecker(t)
+			mc.On("ConnectDB", mock.Anything).Return(test.resultCheck).Maybe()
 
-			ms := new(MockService)
-			ms.On("CreateShortURL", t.Context(), mock.Anything).Return(model.ShortenInfo{}, nil)
+			ms := mockhandler.NewMockService(t)
+			ms.On("CreateShortURL", t.Context(), mock.Anything).Return(model.ShortenInfo{}, nil).Maybe()
 			h := NewHandler(cfg, ms, mc)
 
 			h.GetCheckDB(w, req)

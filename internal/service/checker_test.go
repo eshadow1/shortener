@@ -1,25 +1,15 @@
 package service
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"testing"
 
 	"github.com/eshadow1/shortener/internal/loggers"
+	mockservice "github.com/eshadow1/shortener/mocks/service"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
-
-type MockCheckerRepository struct {
-	mock.Mock
-}
-
-func (m *MockCheckerRepository) PingContext(ctx context.Context) error {
-	args := m.Called(ctx)
-	return args.Error(0)
-}
 
 func TestCheckerService_CheckDB(t *testing.T) {
 	err := loggers.CreateLogger("error")
@@ -54,8 +44,8 @@ func TestCheckerService_CheckDB(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var s *checkerService
 			if test.haveConnection {
-				mr := new(MockCheckerRepository)
-				mr.On("PingContext", t.Context()).Return(test.errorPing)
+				mr := mockservice.NewMockRepoChecker(t)
+				mr.On("PingContext", t.Context()).Return(test.errorPing).Maybe()
 				s = NewCheckerService(mr)
 			} else {
 				s = NewCheckerService(nil)

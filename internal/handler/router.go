@@ -12,7 +12,7 @@ const (
 	timeoutRequest = 5 * time.Second
 )
 
-type routerHandler interface {
+type RouterHandler interface {
 	GetOrigin(w http.ResponseWriter, r *http.Request)
 	PostCreate(w http.ResponseWriter, r *http.Request)
 	PostShorten(w http.ResponseWriter, r *http.Request)
@@ -20,7 +20,7 @@ type routerHandler interface {
 	GetCheckDB(w http.ResponseWriter, r *http.Request)
 }
 
-func InitRouter(h routerHandler) *chi.Mux {
+func InitRouter(h RouterHandler) *chi.Mux {
 	rs := chi.NewRouter()
 	rs.Use(LoggerMiddleware(), GzipMiddleware(), middleware.Timeout(timeoutRequest))
 

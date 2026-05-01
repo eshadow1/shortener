@@ -1,11 +1,11 @@
 package service
 
 import (
-	"context"
 	"errors"
 	"testing"
 
 	"github.com/eshadow1/shortener/internal/model"
+	mockservice "github.com/eshadow1/shortener/mocks/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -15,24 +15,6 @@ const (
 	correctShort = "42b3e75f"
 	correctURL   = "https://practicum.yandex.ru/"
 )
-
-type MockRepository struct {
-	mock.Mock
-}
-
-func (m *MockRepository) Save(ctx context.Context, values []model.URLInfo) error {
-	args := m.Called(ctx, values)
-	return args.Error(0)
-}
-
-func (m *MockRepository) Get(ctx context.Context, key string) (string, error) {
-	args := m.Called(ctx, key)
-	return args.String(0), args.Error(1)
-}
-
-func (m *MockRepository) Close() {
-	m.Called()
-}
 
 func TestShortenerService_CreateShortUrl(t *testing.T) {
 	tests := []struct {
@@ -56,9 +38,9 @@ func TestShortenerService_CreateShortUrl(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			mr := new(MockRepository)
-			mr.On("Save", t.Context(), []model.URLInfo{{ShortURL: correctShort, OriginalURL: correctURL}}).Return(nil)
-			mr.On("Save", t.Context(), mock.Anything, mock.Anything).Return(errors.New("don't save"))
+			mr := mockservice.NewMockRepository(t)
+			mr.On("Save", t.Context(), []model.URLInfo{{ShortURL: correctShort, OriginalURL: correctURL}}).Return(nil).Maybe()
+			mr.On("Save", t.Context(), mock.Anything, mock.Anything).Return(errors.New("don't save")).Maybe()
 			s := NewShortenerService(mr)
 
 			short, errSave := s.CreateShortURL(t.Context(), test.url)
@@ -94,9 +76,9 @@ func TestShortenerService_GetShortUrl(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			mr := new(MockRepository)
-			mr.On("Get", t.Context(), correctShort).Return(correctURL, nil)
-			mr.On("Get", t.Context(), mock.Anything).Return("", errors.New("not found"))
+			mr := mockservice.NewMockRepository(t)
+			mr.On("Get", t.Context(), correctShort).Return(correctURL, nil).Maybe()
+			mr.On("Get", t.Context(), mock.Anything).Return("", errors.New("not found")).Maybe()
 			s := NewShortenerService(mr)
 
 			original, errSave := s.GetOriginalURL(t.Context(), test.short)

@@ -15,22 +15,22 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-type service interface {
+type Service interface {
 	CreateShortURL(context.Context, []model.OriginalInfo) ([]model.ShortenInfo, error)
 	GetOriginalURL(context.Context, model.ShortenInfo) (model.OriginalInfo, error)
 }
 
-type checker interface {
+type Checker interface {
 	ConnectDB(ctx context.Context) error
 }
 
 type handler struct {
 	cfg *configs.Config
-	s   service
-	c   checker
+	s   Service
+	c   Checker
 }
 
-func NewHandler(cfg *configs.Config, svc service, check checker) *handler {
+func NewHandler(cfg *configs.Config, svc Service, check Checker) *handler {
 	return &handler{
 		cfg: cfg,
 		s:   svc,
