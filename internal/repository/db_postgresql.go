@@ -14,7 +14,8 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/lib/pq"
+	"github.com/jackc/pgx/v5/pgconn"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 const (
@@ -31,10 +32,9 @@ type postgreSQLRepository struct {
 }
 
 func NewPostgreSQLRepository(cfg configs.StorageConfig) (*postgreSQLRepository, error) {
-	db, errOpen := sql.Open("postgres", cfg.PathDB)
+	db, errOpen := sql.Open("pgx", cfg.PathDB)
 	if errOpen != nil {
-		loggers.Log.Errorf("Ошибка в создании PostgreSQL DB: %v", errOpen)
-		return nil, errOpen
+		return nil, fmt.Errorf("error create PostgreSQL DB: %w", errOpen)
 	}
 
 	db.SetMaxOpenConns(defaultMaxOpenConnections)
@@ -42,10 +42,9 @@ func NewPostgreSQLRepository(cfg configs.StorageConfig) (*postgreSQLRepository, 
 	db.SetConnMaxLifetime(defaultConnMaxLifetime)
 
 	if errMigrate := runMigrationsWithDB(db, "file://"+cfg.PathMigrations); errMigrate != nil {
-		loggers.Log.Errorf("Ошибка миграции: %v", errMigrate)
-		return nil, errMigrate
+		return nil, fmt.Errorf("error migrate: %w", errMigrate)
 	}
-	loggers.Log.Info("Миграция выполнена")
+	loggers.Log.Info("Migrate successful")
 
 	return &postgreSQLRepository{
 		db: db,
@@ -68,22 +67,25 @@ func (repo *postgreSQLRepository) Save(ctx context.Context, values []model.URLIn
 	if errBegin != nil {
 		return errBegin
 	}
+	defer func() {
+		if errRollBack := tx.Rollback(); errRollBack != nil && !errors.Is(errRollBack, sql.ErrTxDone) {
+			loggers.Log.Errorf("failed insert transaction: %v", errRollBack)
+		}
+	}()
 
 	for _, value := range values {
 		var id int64
 		errTransaction := tx.QueryRowContext(ctx, query, value.ShortURL, value.OriginalURL).Scan(&id)
 		if errTransaction != nil {
-			if pqErr := (*pq.Error)(nil); errors.As(errTransaction, &pqErr) && pqErr.Code == codePostgresDuplicateInsert {
-				return &model.CustomPostgresError{Message: "value already exists: ", Err: errTransaction}
+			if pgErr, ok := errors.AsType[*pgconn.PgError](errTransaction); ok && pgErr.Code == codePostgresDuplicateInsert {
+				return &model.CustomPostgresError{
+					Message: "value already exists: ",
+					Err:     errTransaction,
+				}
 			}
 
-			if strings.Contains(errTransaction.Error(), errorNoRows) {
+			if errors.Is(errTransaction, sql.ErrNoRows) || strings.Contains(errTransaction.Error(), errorNoRows) {
 				return &model.CustomPostgresError{Message: "value already exists: ", Err: errTransaction}
-			}
-
-			if errRollBack := tx.Rollback(); errRollBack != nil {
-				loggers.Log.Errorf("failed insert transaction: %v", errTransaction)
-				return errRollBack
 			}
 
 			return fmt.Errorf("failed to insert URL: %w", errTransaction)

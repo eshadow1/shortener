@@ -8,16 +8,16 @@ import (
 	"github.com/eshadow1/shortener/internal/model"
 )
 
-type repository interface {
+type Repository interface {
 	Save(ctx context.Context, values []model.URLInfo) error
 	Get(ctx context.Context, key string) (string, error)
 	Close()
 }
 type shortenerService struct {
-	repo repository
+	repo Repository
 }
 
-func NewShortenerService(repo repository) *shortenerService {
+func NewShortenerService(repo Repository) *shortenerService {
 	return &shortenerService{repo: repo}
 }
 

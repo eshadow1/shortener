@@ -37,26 +37,26 @@ func NewConfig() *Config {
 func (c *Config) Init() {
 	c.parseWithFlag()
 
-	if addr := os.Getenv("SERVER_ADDRESS"); addr != "" {
+	if addr, ok := os.LookupEnv("SERVER_ADDRESS"); ok {
 		c.Addr = addr
 	}
 
-	if baseUrl := os.Getenv("BASE_URL"); baseUrl != "" {
+	if baseUrl, ok := os.LookupEnv("BASE_URL"); ok {
 		c.BaseURL = baseUrl
 	}
 
-	if levelLog := os.Getenv("LEVEL_LOG"); levelLog != "" {
+	if levelLog, ok := os.LookupEnv("LEVEL_LOG"); ok {
 		c.Log.Level = levelLog
 	}
 
-	if storagePath := os.Getenv("FILE_STORAGE_PATH"); storagePath != "" {
+	if storagePath, ok := os.LookupEnv("FILE_STORAGE_PATH"); ok {
 		c.Storage.Path = storagePath
 	}
 
-	if pathDB := os.Getenv("DATABASE_DSN"); pathDB != "" {
+	if pathDB, ok := os.LookupEnv("DATABASE_DSN"); ok {
 		c.Storage.PathDB = pathDB
 	}
-	if pathMigration := os.Getenv("MIGRATION_PATH"); pathMigration != "" {
+	if pathMigration, ok := os.LookupEnv("MIGRATION_PATH"); ok {
 		c.Storage.PathMigrations = pathMigration
 	}
 }

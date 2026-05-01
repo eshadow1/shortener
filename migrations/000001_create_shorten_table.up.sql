@@ -1,7 +1,7 @@
 -- +migrate Up
 
 CREATE TABLE IF NOT EXISTS shorten (
-    id BIGSERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     shorten_url VARCHAR(255) NOT NULL,
-    original_url TEXT NOT NULL UNIQUE
+    original_url VARCHAR(1024) NOT NULL UNIQUE
     );

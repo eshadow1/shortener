@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/eshadow1/shortener/internal/loggers"
@@ -28,25 +29,25 @@ func TestCheckerService_CheckDB(t *testing.T) {
 		name            string
 		haveConnection  bool
 		errorPing       error
-		expectedConnect bool
+		expectedConnect error
 	}{
 		{
 			name:            "success_connect",
 			haveConnection:  true,
 			errorPing:       nil,
-			expectedConnect: true,
+			expectedConnect: nil,
 		},
 		{
 			name:            "without_connection",
 			haveConnection:  false,
 			errorPing:       nil,
-			expectedConnect: false,
+			expectedConnect: fmt.Errorf("not used database"),
 		},
 		{
 			name:            "unsuccess_connect",
 			haveConnection:  true,
 			errorPing:       errors.New("test"),
-			expectedConnect: false,
+			expectedConnect: fmt.Errorf("not connected to database"),
 		},
 	}
 	for _, test := range tests {
@@ -60,8 +61,8 @@ func TestCheckerService_CheckDB(t *testing.T) {
 				s = NewCheckerService(nil)
 			}
 
-			isConnected := s.CheckDB(t.Context())
-			assert.Equal(t, test.expectedConnect, isConnected)
+			errConnect := s.ConnectDB(t.Context())
+			assert.Equal(t, test.expectedConnect, errConnect)
 		})
 	}
 }

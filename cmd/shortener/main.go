@@ -16,7 +16,6 @@ import (
 	"github.com/eshadow1/shortener/internal/loggers"
 	"github.com/eshadow1/shortener/internal/repository"
 	"github.com/eshadow1/shortener/internal/service"
-	"github.com/go-chi/chi/v5"
 )
 
 const (
@@ -35,26 +34,26 @@ func main() {
 		fmt.Println("Error creating logger:", errCreateLog)
 		return
 	}
-	var rs *chi.Mux
+
+	var r service.Repository
+	var rc service.RepoChecker
 	if cfg.Storage.PathDB != "" {
 		pdb, errCreate := repository.NewPostgreSQLRepository(cfg.Storage)
 		if errCreate != nil {
 			loggers.Log.Errorf("error creating connection db: %v", errCreate)
 			return
 		}
-		s := service.NewShortenerService(pdb)
-		c := service.NewCheckerService(pdb)
-		h := handler.NewHandler(cfg, s, c)
-		rs = handler.InitRouter(h)
+		r = pdb
+		rc = pdb
 	} else {
-		r := repository.NewMemoryRepository(cfg.Storage.Path)
-		defer r.Close()
-
-		s := service.NewShortenerService(r)
-		c := service.NewCheckerService(nil)
-		h := handler.NewHandler(cfg, s, c)
-		rs = handler.InitRouter(h)
+		r = repository.NewMemoryRepository(cfg.Storage.Path)
 	}
+	defer r.Close()
+
+	s := service.NewShortenerService(r)
+	c := service.NewCheckerService(rc)
+	h := handler.NewHandler(cfg, s, c)
+	rs := handler.InitRouter(h)
 
 	server := &http.Server{
 		Addr:         cfg.Addr,

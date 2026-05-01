@@ -2,37 +2,34 @@ package service
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/eshadow1/shortener/internal/loggers"
-
-	_ "github.com/lib/pq"
 )
 
-type repoChecker interface {
+type RepoChecker interface {
 	PingContext(ctx context.Context) error
 }
 
 type checkerService struct {
-	repo repoChecker
+	repo RepoChecker
 }
 
-func NewCheckerService(r repoChecker) *checkerService {
+func NewCheckerService(r RepoChecker) *checkerService {
 	return &checkerService{
 		repo: r,
 	}
 }
 
-func (cs *checkerService) CheckDB(ctx context.Context) bool {
+func (cs *checkerService) ConnectDB(ctx context.Context) error {
 	if cs.repo == nil {
-		loggers.Log.Info("Not used database")
-		return false
+		return fmt.Errorf("not used database")
 	}
 
 	if err := cs.repo.PingContext(ctx); err != nil {
-		loggers.Log.Info("Not connected to database")
-		return false
+		return fmt.Errorf("not connected to database")
 	}
 
 	loggers.Log.Info("Connected to database")
-	return true
+	return nil
 }

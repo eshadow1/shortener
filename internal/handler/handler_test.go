@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/eshadow1/shortener/internal/configs"
+	"github.com/eshadow1/shortener/internal/loggers"
 	"github.com/eshadow1/shortener/internal/model"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
@@ -41,9 +42,9 @@ type MockChecker struct {
 	mock.Mock
 }
 
-func (m *MockChecker) CheckDB(ctx context.Context) bool {
+func (m *MockChecker) ConnectDB(ctx context.Context) error {
 	args := m.Called(ctx)
-	return args.Bool(0)
+	return args.Error(0)
 }
 
 func TestHandler_GetOrigin(t *testing.T) {
@@ -93,7 +94,7 @@ func TestHandler_GetOrigin(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			mc := &MockChecker{}
-			mc.On("CheckDB", mock.Anything).Return(true)
+			mc.On("ConnectDB", mock.Anything).Return(true)
 
 			ms := new(MockService)
 			ms.On("GetOriginalURL", req.Context(), model.ShortenInfo{ShortURL: correctShort}).Return(model.OriginalInfo{OriginalURL: correctURL}, nil)
@@ -132,21 +133,21 @@ func TestHandler_PostCreate(t *testing.T) {
 			method:         http.MethodGet,
 			body:           correctURL,
 			expectedStatus: http.StatusMethodNotAllowed,
-			expectedBody:   "Bad request\n",
+			expectedBody:   http.StatusText(http.StatusBadRequest) + "\n",
 		},
 		{
 			name:           "bad_body",
 			method:         http.MethodPost,
 			body:           "",
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Bad request\n",
+			expectedBody:   http.StatusText(http.StatusBadRequest) + "\n",
 		},
 		{
 			name:           "error_create_short_url",
 			method:         http.MethodPost,
 			body:           "practicum.yandex.ru",
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Bad request\n",
+			expectedBody:   http.StatusText(http.StatusBadRequest) + "\n",
 		},
 	}
 	for _, test := range tests {
@@ -157,7 +158,7 @@ func TestHandler_PostCreate(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			mc := &MockChecker{}
-			mc.On("CheckDB", mock.Anything).Return(true)
+			mc.On("ConnectDB", mock.Anything).Return(nil)
 
 			ms := new(MockService)
 			ms.On("CreateShortURL", t.Context(), []model.OriginalInfo{{OriginalURL: correctURL}}).Return([]model.ShortenInfo{{ShortURL: correctShort}}, nil)
@@ -206,7 +207,7 @@ func TestHandler_PostShorten(t *testing.T) {
 			headerContentType:   "application/json",
 			expectedStatus:      http.StatusMethodNotAllowed,
 			expectedContentType: "text/plain; charset=utf-8",
-			expectedBody:        "Bad request\n",
+			expectedBody:        http.StatusText(http.StatusBadRequest) + "\n",
 		},
 		{
 			name:                "bad_body",
@@ -215,7 +216,7 @@ func TestHandler_PostShorten(t *testing.T) {
 			headerContentType:   "application/json",
 			expectedStatus:      http.StatusBadRequest,
 			expectedContentType: "text/plain; charset=utf-8",
-			expectedBody:        "Bad request\n",
+			expectedBody:        http.StatusText(http.StatusBadRequest) + "\n",
 		},
 		{
 			name:                "error_create_short_url",
@@ -224,7 +225,7 @@ func TestHandler_PostShorten(t *testing.T) {
 			headerContentType:   "application/json",
 			expectedStatus:      http.StatusBadRequest,
 			expectedContentType: "text/plain; charset=utf-8",
-			expectedBody:        "Bad request\n",
+			expectedBody:        http.StatusText(http.StatusBadRequest) + "\n",
 		},
 		{
 			name:                "error_content_type",
@@ -233,7 +234,7 @@ func TestHandler_PostShorten(t *testing.T) {
 			headerContentType:   "application/text",
 			expectedStatus:      http.StatusBadRequest,
 			expectedContentType: "text/plain; charset=utf-8",
-			expectedBody:        "Bad request\n",
+			expectedBody:        http.StatusText(http.StatusBadRequest) + "\n",
 		},
 	}
 	for _, test := range tests {
@@ -244,7 +245,7 @@ func TestHandler_PostShorten(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			mc := &MockChecker{}
-			mc.On("CheckDB", mock.Anything).Return(true)
+			mc.On("ConnectDB", mock.Anything).Return(nil)
 
 			ms := new(MockService)
 			ms.On("CreateShortURL", t.Context(), []model.OriginalInfo{{OriginalURL: correctURL}}).Return([]model.ShortenInfo{{ShortURL: correctShort}}, nil)
@@ -294,7 +295,7 @@ func TestHandler_PostShortenBatch(t *testing.T) {
 			headerContentType:   "application/json",
 			expectedStatus:      http.StatusMethodNotAllowed,
 			expectedContentType: "text/plain; charset=utf-8",
-			expectedBody:        "Bad request\n",
+			expectedBody:        http.StatusText(http.StatusBadRequest) + "\n",
 		},
 		{
 			name:                "bad_body",
@@ -303,7 +304,7 @@ func TestHandler_PostShortenBatch(t *testing.T) {
 			headerContentType:   "application/json",
 			expectedStatus:      http.StatusBadRequest,
 			expectedContentType: "text/plain; charset=utf-8",
-			expectedBody:        "Bad request\n",
+			expectedBody:        http.StatusText(http.StatusBadRequest) + "\n",
 		},
 		{
 			name:                "error_create_short_url",
@@ -312,7 +313,7 @@ func TestHandler_PostShortenBatch(t *testing.T) {
 			headerContentType:   "application/json",
 			expectedStatus:      http.StatusBadRequest,
 			expectedContentType: "text/plain; charset=utf-8",
-			expectedBody:        "Bad request\n",
+			expectedBody:        http.StatusText(http.StatusBadRequest) + "\n",
 		},
 		{
 			name:                "error_content_type",
@@ -321,7 +322,7 @@ func TestHandler_PostShortenBatch(t *testing.T) {
 			headerContentType:   "application/text",
 			expectedStatus:      http.StatusBadRequest,
 			expectedContentType: "text/plain; charset=utf-8",
-			expectedBody:        "Bad request\n",
+			expectedBody:        http.StatusText(http.StatusBadRequest) + "\n",
 		},
 	}
 	for _, test := range tests {
@@ -332,7 +333,7 @@ func TestHandler_PostShortenBatch(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			mc := &MockChecker{}
-			mc.On("CheckDB", mock.Anything).Return(true)
+			mc.On("ConnectDB", mock.Anything).Return(nil)
 
 			ms := new(MockService)
 			ms.On("CreateShortURL", t.Context(), []model.OriginalInfo{{OriginalURL: correctURL, CorrelationID: "1"}}).Return([]model.ShortenInfo{{ShortURL: correctShort, CorrelationID: "1"}}, nil)
@@ -356,34 +357,36 @@ func TestHandler_GetCheckDB(t *testing.T) {
 		Addr:    configs.DefaultAddr,
 		BaseURL: configs.DefaultBaseURL,
 	}
+	errLog := loggers.CreateLogger("Error")
+	require.NoError(t, errLog)
 
 	tests := []struct {
 		name           string
 		method         string
-		resultCheck    bool
+		resultCheck    error
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name:           "success",
 			method:         http.MethodGet,
-			resultCheck:    true,
+			resultCheck:    nil,
 			expectedStatus: http.StatusOK,
-			expectedBody:   "OK\n",
+			expectedBody:   http.StatusText(http.StatusOK) + "\n",
 		},
 		{
 			name:           "bad_method",
 			method:         http.MethodPost,
-			resultCheck:    true,
+			resultCheck:    fmt.Errorf("error"),
 			expectedStatus: http.StatusMethodNotAllowed,
-			expectedBody:   "Bad request\n",
+			expectedBody:   http.StatusText(http.StatusMethodNotAllowed) + "\n",
 		},
 		{
 			name:           "bad_connection",
 			method:         http.MethodGet,
-			resultCheck:    false,
+			resultCheck:    fmt.Errorf("error"),
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "Internal Server\n",
+			expectedBody:   http.StatusText(http.StatusInternalServerError) + "\n",
 		},
 	}
 	for _, test := range tests {
@@ -394,7 +397,7 @@ func TestHandler_GetCheckDB(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			mc := &MockChecker{}
-			mc.On("CheckDB", mock.Anything).Return(test.resultCheck)
+			mc.On("ConnectDB", mock.Anything).Return(test.resultCheck)
 
 			ms := new(MockService)
 			ms.On("CreateShortURL", t.Context(), mock.Anything).Return(model.ShortenInfo{}, nil)

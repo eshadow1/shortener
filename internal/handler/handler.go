@@ -6,10 +6,11 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
-	"time"
 
 	"github.com/eshadow1/shortener/internal/configs"
+	"github.com/eshadow1/shortener/internal/loggers"
 	"github.com/eshadow1/shortener/internal/model"
 	"github.com/go-chi/chi/v5"
 )
@@ -20,7 +21,7 @@ type service interface {
 }
 
 type checker interface {
-	CheckDB(ctx context.Context) bool
+	ConnectDB(ctx context.Context) error
 }
 
 type handler struct {
@@ -41,19 +42,19 @@ func (h *handler) PostCreate(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	if r.Method != http.MethodPost {
-		http.Error(w, "Bad request", http.StatusMethodNotAllowed)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusMethodNotAllowed)
 		return
 	}
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
 	originalURL := strings.TrimSpace(string(body))
 	if originalURL == "" {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
@@ -63,15 +64,23 @@ func (h *handler) PostCreate(w http.ResponseWriter, r *http.Request) {
 		if _, ok := errors.AsType[*model.CustomPostgresError](errCreate); ok {
 			status = http.StatusConflict
 		} else {
-			http.Error(w, "Bad request", http.StatusBadRequest)
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 			return
 		}
 	}
+	shortURL, errJoin := url.JoinPath(h.cfg.BaseURL, short[0].ShortURL)
+	if errJoin != nil {
+		loggers.Log.Errorf("Error joining short url: %v", errJoin)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(status)
-	_, err = w.Write([]byte(h.cfg.BaseURL + "/" + short[0].ShortURL))
+	_, err = w.Write([]byte(shortURL))
 	if err != nil {
-		http.Error(w, "Internal Server", http.StatusInternalServerError)
+		loggers.Log.Errorf("Error writing response: %v", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 }
@@ -79,24 +88,24 @@ func (h *handler) PostCreate(w http.ResponseWriter, r *http.Request) {
 func (h *handler) PostShorten(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	if r.Method != http.MethodPost {
-		http.Error(w, "Bad request", http.StatusMethodNotAllowed)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusMethodNotAllowed)
 		return
 	}
 
 	if r.Header.Get("Content-Type") != "application/json" {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 	var req model.OriginalInfo
 	errUnmarshal := json.Unmarshal(body, &req)
 	if errUnmarshal != nil {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
@@ -106,26 +115,34 @@ func (h *handler) PostShorten(w http.ResponseWriter, r *http.Request) {
 		if _, ok := errors.AsType[*model.CustomPostgresError](errCreate); ok {
 			status = http.StatusConflict
 		} else {
-			http.Error(w, "Bad request", http.StatusBadRequest)
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 			return
 		}
 	}
 
 	short := shorts[0]
-	short.ShortURL = h.cfg.BaseURL + "/" + short.ShortURL
+	var errJoin error
+	short.ShortURL, errJoin = url.JoinPath(h.cfg.BaseURL, short.ShortURL)
+	if errJoin != nil {
+		loggers.Log.Errorf("Error joining short url: %v", errJoin)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 
 	bodyResponse, errMarshal := json.Marshal(map[string]string{"result": short.ShortURL})
 	if errMarshal != nil {
-		http.Error(w, "Internal Server", http.StatusInternalServerError)
+		loggers.Log.Errorf("Error marshaling response: %v", errMarshal)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(status)
 	_, err = w.Write(bodyResponse)
 	if err != nil {
-		http.Error(w, "Internal Server", http.StatusInternalServerError)
+		loggers.Log.Errorf("Error writing response: %v", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 }
@@ -134,49 +151,57 @@ func (h *handler) PostShortenBatch(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	if r.Method != http.MethodPost {
-		http.Error(w, "Bad request", http.StatusMethodNotAllowed)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusMethodNotAllowed)
 		return
 	}
 
 	if r.Header.Get("Content-Type") != "application/json" {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 	var req []model.OriginalInfo
 	errUnmarshal := json.Unmarshal(body, &req)
 	if errUnmarshal != nil {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
 	shorts, errCreate := h.s.CreateShortURL(r.Context(), req)
 	if errCreate != nil {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
 	for i, short := range shorts {
-		shorts[i].ShortURL = h.cfg.BaseURL + "/" + short.ShortURL
+		var errJoin error
+		shorts[i].ShortURL, errJoin = url.JoinPath(h.cfg.BaseURL, short.ShortURL)
+		if errJoin != nil {
+			loggers.Log.Errorf("Error joining short url: %v", errJoin)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 
 	bodyResponse, errMarshal := json.Marshal(shorts)
 	if errMarshal != nil {
-		http.Error(w, "Internal Server", http.StatusInternalServerError)
+		loggers.Log.Errorf("Error marshaling response: %v", errMarshal)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
 	_, err = w.Write(bodyResponse)
 	if err != nil {
-		http.Error(w, "Internal Server", http.StatusInternalServerError)
+		loggers.Log.Errorf("Error writing response: %v", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 }
@@ -185,14 +210,14 @@ func (h *handler) GetOrigin(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	if r.Method != http.MethodGet {
-		http.Error(w, "Bad request", http.StatusMethodNotAllowed)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusMethodNotAllowed)
 		return
 	}
 
 	short := chi.URLParam(r, "shortURL")
 	originalURL, errGet := h.s.GetOriginalURL(r.Context(), model.ShortenInfo{ShortURL: strings.TrimPrefix(short, "/")})
 	if errGet != nil {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
@@ -204,23 +229,22 @@ func (h *handler) GetCheckDB(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	if r.Method != http.MethodGet {
-		http.Error(w, "Bad request", http.StatusMethodNotAllowed)
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
-	defer cancel()
-
-	isConnect := h.c.CheckDB(ctx)
-	if !isConnect {
-		http.Error(w, "Internal Server", http.StatusInternalServerError)
+	errConnect := h.c.ConnectDB(r.Context())
+	if errConnect != nil {
+		loggers.Log.Errorf("Error connecting to DB: %v", errConnect)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 	_, err := w.Write([]byte("OK\n"))
 	if err != nil {
-		http.Error(w, "Internal Server", http.StatusInternalServerError)
+		loggers.Log.Errorf("Error writing response: %v", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 }
