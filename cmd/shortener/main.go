@@ -35,11 +35,24 @@ func main() {
 		return
 	}
 
-	r := repository.NewMemoryRepository(cfg.Storage.Path)
+	var r service.Repository
+	var rc service.RepoChecker
+	if cfg.Storage.PathDB != "" {
+		pdb, errCreate := repository.NewPostgreSQLRepository(cfg.Storage)
+		if errCreate != nil {
+			loggers.Log.Errorf("error creating connection db: %v", errCreate)
+			return
+		}
+		r = pdb
+		rc = pdb
+	} else {
+		r = repository.NewMemoryRepository(cfg.Storage.Path)
+	}
 	defer r.Close()
-	s := service.NewShortenerService(r)
-	h := handler.NewHandler(cfg, s)
 
+	s := service.NewShortenerService(r)
+	c := service.NewCheckerService(rc)
+	h := handler.NewHandler(cfg, s, c)
 	rs := handler.InitRouter(h)
 
 	server := &http.Server{
