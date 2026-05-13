@@ -129,6 +129,52 @@ func (_c *MockRouterHandler_GetOrigin_Call) RunAndReturn(run func(w http.Respons
 	return _c
 }
 
+// GetUserURLs provides a mock function for the type MockRouterHandler
+func (_mock *MockRouterHandler) GetUserURLs(w http.ResponseWriter, r *http.Request) {
+	_mock.Called(w, r)
+	return
+}
+
+// MockRouterHandler_GetUserURLs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUserURLs'
+type MockRouterHandler_GetUserURLs_Call struct {
+	*mock.Call
+}
+
+// GetUserURLs is a helper method to define mock.On call
+//   - w http.ResponseWriter
+//   - r *http.Request
+func (_e *MockRouterHandler_Expecter) GetUserURLs(w interface{}, r interface{}) *MockRouterHandler_GetUserURLs_Call {
+	return &MockRouterHandler_GetUserURLs_Call{Call: _e.mock.On("GetUserURLs", w, r)}
+}
+
+func (_c *MockRouterHandler_GetUserURLs_Call) Run(run func(w http.ResponseWriter, r *http.Request)) *MockRouterHandler_GetUserURLs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 http.ResponseWriter
+		if args[0] != nil {
+			arg0 = args[0].(http.ResponseWriter)
+		}
+		var arg1 *http.Request
+		if args[1] != nil {
+			arg1 = args[1].(*http.Request)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockRouterHandler_GetUserURLs_Call) Return() *MockRouterHandler_GetUserURLs_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockRouterHandler_GetUserURLs_Call) RunAndReturn(run func(w http.ResponseWriter, r *http.Request)) *MockRouterHandler_GetUserURLs_Call {
+	_c.Run(run)
+	return _c
+}
+
 // PostCreate provides a mock function for the type MockRouterHandler
 func (_mock *MockRouterHandler) PostCreate(w http.ResponseWriter, r *http.Request) {
 	_mock.Called(w, r)

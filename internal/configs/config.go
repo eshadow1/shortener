@@ -23,11 +23,17 @@ type LogConfig struct {
 	Level string
 }
 
+type AuthConfig struct {
+	JWTSecret   []byte
+	TokenIssuer string
+}
+
 type Config struct {
 	Addr    string
 	BaseURL string
 	Log     LogConfig
 	Storage StorageConfig
+	Auth    AuthConfig
 }
 
 func NewConfig() *Config {
@@ -56,8 +62,17 @@ func (c *Config) Init() {
 	if pathDB, ok := os.LookupEnv("DATABASE_DSN"); ok {
 		c.Storage.PathDB = pathDB
 	}
+
 	if pathMigration, ok := os.LookupEnv("MIGRATION_PATH"); ok {
 		c.Storage.PathMigrations = pathMigration
+	}
+
+	if jwtSecret, ok := os.LookupEnv("JWT_SECRET"); ok {
+		c.Auth.JWTSecret = []byte(jwtSecret)
+	}
+
+	if tokenIssuer, ok := os.LookupEnv("TOKEN_ISSUER"); ok {
+		c.Auth.TokenIssuer = tokenIssuer
 	}
 }
 

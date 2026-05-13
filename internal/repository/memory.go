@@ -15,7 +15,7 @@ import (
 var ErrShortNotFound = errors.New("short not found")
 
 type memoryRepository struct {
-	matchPairs  map[string]string
+	matchPairs  map[string]map[string]string
 	storagePath string
 	mu          sync.RWMutex
 }
@@ -28,44 +28,76 @@ func NewMemoryRepository(storagePath string) *memoryRepository {
 	}
 }
 
-func (m *memoryRepository) Save(_ context.Context, values []model.URLInfo) error {
+func (m *memoryRepository) Save(ctx context.Context, values []model.URLInfo) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	userID := ctx.Value(model.UserIDContextKey).(string)
+
+	if m.matchPairs[userID] == nil {
+		m.matchPairs[userID] = make(map[string]string)
+	}
+
 	for _, value := range values {
-		m.matchPairs[value.ShortURL] = value.OriginalURL
+		m.matchPairs[userID][value.ShortURL] = value.OriginalURL
 	}
 	return nil
 }
 
-func (m *memoryRepository) Get(_ context.Context, short string) (string, error) {
+func (m *memoryRepository) Get(ctx context.Context, short string) (string, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	if val, ok := m.matchPairs[short]; ok {
-		return val, nil
+	userID := ctx.Value(model.UserIDContextKey).(string)
+
+	if userInfo, okUser := m.matchPairs[userID]; okUser {
+		if val, okShort := userInfo[short]; okShort {
+			return val, nil
+		}
 	}
 
 	return "", ErrShortNotFound
+}
+
+func (m *memoryRepository) GetUserURLs(ctx context.Context) ([]model.UserURL, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	userID := ctx.Value(model.UserIDContextKey).(string)
+	userInfo, okUser := m.matchPairs[userID]
+
+	urls := make([]model.UserURL, 0, len(userInfo))
+	if !okUser {
+		return urls, nil
+	}
+
+	for short, origin := range userInfo {
+		urls = append(urls, model.UserURL{ShortURL: short, OriginalURL: origin})
+	}
+
+	return urls, nil
 }
 
 func (m *memoryRepository) Close() {
 	saveData(m.storagePath, m.matchPairs)
 }
 
-func saveData(storagePath string, data map[string]string) {
+func saveData(storagePath string, data map[string]map[string]string) {
 	if len(data) == 0 {
 		return
 	}
 	temp := make([]model.FileStorage, 0, len(data))
 	index := int64(1)
-	for short, origin := range data {
-		temp = append(temp, model.FileStorage{
-			UUID:     strconv.FormatInt(index, 10),
-			Short:    short,
-			Original: origin,
-		})
-		index++
+	for user, info := range data {
+		for short, origin := range info {
+			temp = append(temp, model.FileStorage{
+				UUID:     strconv.FormatInt(index, 10),
+				Short:    short,
+				Original: origin,
+				UserID:   user,
+			})
+			index++
+		}
 	}
 	if storagePath == "" {
 		return
@@ -90,8 +122,8 @@ func saveData(storagePath string, data map[string]string) {
 	}
 }
 
-func loadData(storagePath string) map[string]string {
-	matchPairs := make(map[string]string)
+func loadData(storagePath string) map[string]map[string]string {
+	matchPairs := make(map[string]map[string]string)
 	if storagePath == "" {
 		return matchPairs
 	}
@@ -114,7 +146,7 @@ func loadData(storagePath string) map[string]string {
 	}
 
 	for _, s := range temp {
-		matchPairs[s.Short] = s.Original
+		matchPairs[s.UserID][s.Short] = s.Original
 	}
 	return matchPairs
 }

@@ -11,6 +11,7 @@ import (
 type Repository interface {
 	Save(ctx context.Context, values []model.URLInfo) error
 	Get(ctx context.Context, key string) (string, error)
+	GetUserURLs(ctx context.Context) ([]model.UserURL, error)
 	Close()
 }
 type shortenerService struct {
@@ -56,9 +57,14 @@ func (s *shortenerService) CreateShortURL(ctx context.Context, originals []model
 
 func (s *shortenerService) GetOriginalURL(ctx context.Context, short model.ShortenInfo) (model.OriginalInfo, error) {
 	origin, errGet := s.repo.Get(ctx, short.ShortURL)
+
 	if errGet != nil {
 		return model.OriginalInfo{}, errGet
 	}
 
 	return model.OriginalInfo{OriginalURL: origin}, nil
+}
+
+func (s *shortenerService) GetUserURLs(ctx context.Context) ([]model.UserURL, error) {
+	return s.repo.GetUserURLs(ctx)
 }

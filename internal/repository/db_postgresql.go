@@ -57,10 +57,10 @@ func (repo *postgreSQLRepository) PingContext(ctx context.Context) error {
 
 func (repo *postgreSQLRepository) Save(ctx context.Context, values []model.URLInfo) error {
 	const query = `
-        INSERT INTO shorten (shorten_url, original_url)
-        VALUES ($1, $2) 
+        INSERT INTO shorten (shorten_url, original_url, user_id)
+        VALUES ($1, $2, $3) 
         ON CONFLICT (original_url) DO NOTHING
-		RETURNING id
+		RETURNING id;
     `
 
 	tx, errBegin := repo.db.BeginTx(ctx, nil)
@@ -73,9 +73,11 @@ func (repo *postgreSQLRepository) Save(ctx context.Context, values []model.URLIn
 		}
 	}()
 
+	userID := ctx.Value(model.UserIDContextKey).(string)
+
 	for _, value := range values {
 		var id int64
-		errTransaction := tx.QueryRowContext(ctx, query, value.ShortURL, value.OriginalURL).Scan(&id)
+		errTransaction := tx.QueryRowContext(ctx, query, value.ShortURL, value.OriginalURL, userID).Scan(&id)
 		if errTransaction != nil {
 			if pgErr, ok := errors.AsType[*pgconn.PgError](errTransaction); ok && pgErr.Code == codePostgresDuplicateInsert {
 				return &model.CustomPostgresError{
@@ -99,11 +101,13 @@ func (repo *postgreSQLRepository) Get(ctx context.Context, key string) (string, 
 	const query = `
         SELECT original_url 
         FROM shorten 
-        WHERE shorten_url = $1
+        WHERE shorten_url = $1 and user_id = $2;
     `
 
+	userID := ctx.Value(model.UserIDContextKey).(string)
+
 	var shortenURL string
-	err := repo.db.QueryRowContext(ctx, query, key).Scan(&shortenURL)
+	err := repo.db.QueryRowContext(ctx, query, key, userID).Scan(&shortenURL)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return "", sql.ErrNoRows
@@ -112,6 +116,36 @@ func (repo *postgreSQLRepository) Get(ctx context.Context, key string) (string, 
 	}
 
 	return shortenURL, nil
+}
+
+func (repo *postgreSQLRepository) GetUserURLs(ctx context.Context) ([]model.UserURL, error) {
+	const query = `
+        SELECT original_url, shorten_url 
+        FROM shorten 
+        WHERE user_id = $1;
+    `
+
+	userID := ctx.Value(model.UserIDContextKey).(string)
+
+	rows, err := repo.db.QueryContext(ctx, query, userID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return make([]model.UserURL, 0), sql.ErrNoRows
+		}
+		return make([]model.UserURL, 0), fmt.Errorf("failed to query shorten_url: %w", err)
+	}
+
+	urls := make([]model.UserURL, 0)
+
+	for rows.Next() {
+		var url model.UserURL
+		if errScan := rows.Scan(&url.OriginalURL, &url.ShortURL); errScan != nil {
+			return make([]model.UserURL, 0), fmt.Errorf("failed to query shorten_url: %w", err)
+		}
+		urls = append(urls, url)
+	}
+
+	return urls, nil
 }
 
 func (repo *postgreSQLRepository) Close() {

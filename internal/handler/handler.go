@@ -18,6 +18,7 @@ import (
 type Service interface {
 	CreateShortURL(context.Context, []model.OriginalInfo) ([]model.ShortenInfo, error)
 	GetOriginalURL(context.Context, model.ShortenInfo) (model.OriginalInfo, error)
+	GetUserURLs(context.Context) ([]model.UserURL, error)
 }
 
 type Checker interface {
@@ -102,6 +103,7 @@ func (h *handler) PostShorten(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
+
 	var req model.OriginalInfo
 	errUnmarshal := json.Unmarshal(body, &req)
 	if errUnmarshal != nil {
@@ -165,6 +167,7 @@ func (h *handler) PostShortenBatch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
+
 	var req []model.OriginalInfo
 	errUnmarshal := json.Unmarshal(body, &req)
 	if errUnmarshal != nil {
@@ -225,6 +228,53 @@ func (h *handler) GetOrigin(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
+func (h *handler) GetUserURLs(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
+	if r.Method != http.MethodGet {
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		return
+	}
+
+	userURLs, errGetURLs := h.s.GetUserURLs(r.Context())
+	if errGetURLs != nil {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	if len(userURLs) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	for i, userUrl := range userURLs {
+		var errJoin error
+		userURLs[i].ShortURL, errJoin = url.JoinPath(h.cfg.BaseURL, userUrl.ShortURL)
+		if errJoin != nil {
+			loggers.Log.Errorf("Error joining short url: %v", errJoin)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	bodyResponse, errMarshal := json.Marshal(userURLs)
+	if errMarshal != nil {
+		loggers.Log.Errorf("Error marshaling response: %v", errMarshal)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_, errBody := w.Write(bodyResponse)
+	if errBody != nil {
+		loggers.Log.Errorf("Error writing response: %v", errBody)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+}
+
 func (h *handler) GetCheckDB(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
@@ -241,7 +291,7 @@ func (h *handler) GetCheckDB(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	_, err := w.Write([]byte("OK\n"))
+	_, err := w.Write([]byte(http.StatusText(http.StatusOK)))
 	if err != nil {
 		loggers.Log.Errorf("Error writing response: %v", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)

@@ -53,7 +53,7 @@ func main() {
 	s := service.NewShortenerService(r)
 	c := service.NewCheckerService(rc)
 	h := handler.NewHandler(cfg, s, c)
-	rs := handler.InitRouter(h)
+	rs := handler.InitRouter(cfg, h)
 
 	server := &http.Server{
 		Addr:         cfg.Addr,
