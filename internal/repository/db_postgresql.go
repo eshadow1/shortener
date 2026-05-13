@@ -101,13 +101,11 @@ func (repo *postgreSQLRepository) Get(ctx context.Context, key string) (string, 
 	const query = `
         SELECT original_url 
         FROM shorten 
-        WHERE shorten_url = $1 and user_id = $2;
+        WHERE shorten_url = $1;
     `
 
-	userID := ctx.Value(model.UserIDContextKey).(string)
-
 	var shortenURL string
-	err := repo.db.QueryRowContext(ctx, query, key, userID).Scan(&shortenURL)
+	err := repo.db.QueryRowContext(ctx, query, key).Scan(&shortenURL)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return "", sql.ErrNoRows
