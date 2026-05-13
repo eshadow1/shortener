@@ -44,13 +44,11 @@ func (m *memoryRepository) Save(ctx context.Context, values []model.URLInfo) err
 	return nil
 }
 
-func (m *memoryRepository) Get(ctx context.Context, short string) (string, error) {
+func (m *memoryRepository) Get(_ context.Context, short string) (string, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	userID := ctx.Value(model.UserIDContextKey).(string)
-
-	if userInfo, okUser := m.matchPairs[userID]; okUser {
+	for _, userInfo := range m.matchPairs {
 		if val, okShort := userInfo[short]; okShort {
 			return val, nil
 		}
