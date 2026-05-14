@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/eshadow1/shortener/internal/configs"
 	"github.com/eshadow1/shortener/internal/loggers"
@@ -21,12 +22,13 @@ type Repository interface {
 }
 
 type shortenerService struct {
-	repo      Repository
-	wg        sync.WaitGroup
-	ctx       context.Context
-	cancelCtx context.CancelFunc
-	input     chan model.DeleteInfo
-	batchSize int
+	repo          Repository
+	wg            sync.WaitGroup
+	ctx           context.Context
+	cancelCtx     context.CancelFunc
+	input         chan model.DeleteInfo
+	batchSize     int
+	flushInterval time.Duration
 }
 
 var (
@@ -38,11 +40,12 @@ func NewShortenerService(repo Repository, cfg configs.ServiceConfig) *shortenerS
 	ctx, cancel := context.WithCancel(context.Background())
 
 	s := &shortenerService{
-		repo:      repo,
-		ctx:       ctx,
-		input:     make(chan model.DeleteInfo, cfg.BufferSizeChan),
-		cancelCtx: cancel,
-		batchSize: cfg.BatchSize,
+		repo:          repo,
+		ctx:           ctx,
+		input:         make(chan model.DeleteInfo, cfg.BufferSizeChan),
+		cancelCtx:     cancel,
+		batchSize:     cfg.BatchSize,
+		flushInterval: cfg.FlushInterval,
 	}
 
 	s.wg.Add(1)
@@ -55,6 +58,8 @@ func (s *shortenerService) batchWorker() {
 	defer s.wg.Done()
 
 	batch := make(map[string][]string)
+	ticker := time.NewTicker(s.flushInterval)
+	defer ticker.Stop()
 
 	for {
 		select {
@@ -68,6 +73,13 @@ func (s *shortenerService) batchWorker() {
 				s.flushBatch(req.UserID, batch[req.UserID])
 				delete(batch, req.UserID)
 			}
+		case <-ticker.C:
+			for userID, urls := range batch {
+				if len(urls) > 0 {
+					s.flushBatch(userID, urls)
+				}
+			}
+			batch = make(map[string][]string)
 		case <-s.ctx.Done():
 			for userID, urls := range batch {
 				if len(urls) > 0 {

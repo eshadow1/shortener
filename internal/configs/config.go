@@ -4,16 +4,18 @@ import (
 	"flag"
 	"os"
 	"strconv"
+	"time"
 )
 
 const (
-	DefaultEmptySting     = ""
-	DefaultAddr           = "localhost:8080"
-	DefaultBaseURL        = "http://localhost:8080"
-	DefaultLevelLog       = "info"
-	DefaultMigrationPath  = "./migrations"
-	DefaultBufferSizeChan = 1
-	DefaultBatchSize      = 1
+	DefaultEmptySting          = ""
+	DefaultAddr                = "localhost:8080"
+	DefaultBaseURL             = "http://localhost:8080"
+	DefaultLevelLog            = "info"
+	DefaultMigrationPath       = "./migrations"
+	DefaultBufferSizeChan      = 100
+	DefaultBatchSize           = 10
+	DefaultFlushIntervalSecond = 15 * time.Second
 )
 
 type StorageConfig struct {
@@ -34,6 +36,7 @@ type AuthConfig struct {
 type ServiceConfig struct {
 	BufferSizeChan int
 	BatchSize      int
+	FlushInterval  time.Duration
 }
 
 type Config struct {
@@ -102,6 +105,16 @@ func (c *Config) Init() {
 		}
 	} else {
 		c.Service.BatchSize = DefaultBatchSize
+	}
+
+	if flushInterval, ok := os.LookupEnv("FLUSH_INTERVAL"); ok {
+		temp, errConv := strconv.Atoi(flushInterval)
+		if errConv != nil {
+			c.Service.FlushInterval = DefaultFlushIntervalSecond
+		}
+		c.Service.FlushInterval = time.Duration(temp) * time.Second
+	} else {
+		c.Service.FlushInterval = DefaultFlushIntervalSecond
 	}
 }
 

@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/eshadow1/shortener/internal/configs"
 	"github.com/eshadow1/shortener/internal/model"
@@ -17,12 +18,14 @@ const (
 	correctURL     = "https://practicum.yandex.ru/"
 	testBufferSize = 10
 	testBatchSize  = 10
+	testTimeout    = 10 * time.Second
 )
 
 func TestShortenerService_CreateShortUrl(t *testing.T) {
 	cfg := configs.ServiceConfig{
 		BufferSizeChan: testBufferSize,
 		BatchSize:      testBatchSize,
+		FlushInterval:  testTimeout,
 	}
 	tests := []struct {
 		name          string
@@ -65,6 +68,7 @@ func TestShortenerService_GetShortUrl(t *testing.T) {
 	cfg := configs.ServiceConfig{
 		BufferSizeChan: testBufferSize,
 		BatchSize:      testBatchSize,
+		FlushInterval:  testTimeout,
 	}
 	tests := []struct {
 		name             string
