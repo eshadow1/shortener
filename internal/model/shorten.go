@@ -63,4 +63,10 @@ func (o *ShortenInfo) UnmarshalJSON(data []byte) error {
 type UserURL struct {
 	OriginalURL string `json:"original_url"`
 	ShortURL    string `json:"short_url"`
+	IsDeleted   bool   `json:"is_deleted"`
+}
+
+type DeleteInfo struct {
+	UserID string
+	URLs   []string
 }

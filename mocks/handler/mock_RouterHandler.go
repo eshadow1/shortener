@@ -37,6 +37,52 @@ func (_m *MockRouterHandler) EXPECT() *MockRouterHandler_Expecter {
 	return &MockRouterHandler_Expecter{mock: &_m.Mock}
 }
 
+// DeleteUserURLs provides a mock function for the type MockRouterHandler
+func (_mock *MockRouterHandler) DeleteUserURLs(w http.ResponseWriter, r *http.Request) {
+	_mock.Called(w, r)
+	return
+}
+
+// MockRouterHandler_DeleteUserURLs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteUserURLs'
+type MockRouterHandler_DeleteUserURLs_Call struct {
+	*mock.Call
+}
+
+// DeleteUserURLs is a helper method to define mock.On call
+//   - w http.ResponseWriter
+//   - r *http.Request
+func (_e *MockRouterHandler_Expecter) DeleteUserURLs(w interface{}, r interface{}) *MockRouterHandler_DeleteUserURLs_Call {
+	return &MockRouterHandler_DeleteUserURLs_Call{Call: _e.mock.On("DeleteUserURLs", w, r)}
+}
+
+func (_c *MockRouterHandler_DeleteUserURLs_Call) Run(run func(w http.ResponseWriter, r *http.Request)) *MockRouterHandler_DeleteUserURLs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 http.ResponseWriter
+		if args[0] != nil {
+			arg0 = args[0].(http.ResponseWriter)
+		}
+		var arg1 *http.Request
+		if args[1] != nil {
+			arg1 = args[1].(*http.Request)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockRouterHandler_DeleteUserURLs_Call) Return() *MockRouterHandler_DeleteUserURLs_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockRouterHandler_DeleteUserURLs_Call) RunAndReturn(run func(w http.ResponseWriter, r *http.Request)) *MockRouterHandler_DeleteUserURLs_Call {
+	_c.Run(run)
+	return _c
+}
+
 // GetCheckDB provides a mock function for the type MockRouterHandler
 func (_mock *MockRouterHandler) GetCheckDB(w http.ResponseWriter, r *http.Request) {
 	_mock.Called(w, r)

@@ -26,21 +26,29 @@ func TestRepository_Get(t *testing.T) {
 	tests := []struct {
 		name             string
 		short            string
-		expectedOriginal string
+		expectedOriginal model.UserURL
 		expectedError    error
 	}{
 		{
 
-			name:             "success",
-			short:            defaultShort,
-			expectedOriginal: defaultOriginal,
-			expectedError:    nil,
+			name:  "success",
+			short: defaultShort,
+			expectedOriginal: model.UserURL{
+				OriginalURL: defaultOriginal,
+				ShortURL:    defaultShort,
+				IsDeleted:   false,
+			},
+			expectedError: nil,
 		},
 		{
-			name:             "error_get",
-			short:            "not_found",
-			expectedOriginal: "",
-			expectedError:    errors.New("short not found"),
+			name:  "error_get",
+			short: "not_found",
+			expectedOriginal: model.UserURL{
+				OriginalURL: "",
+				ShortURL:    "",
+				IsDeleted:   false,
+			},
+			expectedError: errors.New("short not found"),
 		},
 	}
 	for _, test := range tests {

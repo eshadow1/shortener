@@ -15,11 +15,12 @@ const (
 
 type RouterHandler interface {
 	GetOrigin(w http.ResponseWriter, r *http.Request)
+	GetCheckDB(w http.ResponseWriter, r *http.Request)
+	GetUserURLs(w http.ResponseWriter, r *http.Request)
 	PostCreate(w http.ResponseWriter, r *http.Request)
 	PostShorten(w http.ResponseWriter, r *http.Request)
 	PostShortenBatch(w http.ResponseWriter, r *http.Request)
-	GetCheckDB(w http.ResponseWriter, r *http.Request)
-	GetUserURLs(w http.ResponseWriter, r *http.Request)
+	DeleteUserURLs(w http.ResponseWriter, r *http.Request)
 }
 
 func InitRouter(cfg *configs.Config, h RouterHandler) *chi.Mux {
@@ -36,6 +37,7 @@ func InitRouter(cfg *configs.Config, h RouterHandler) *chi.Mux {
 				r.Post("/batch", h.PostShortenBatch)
 			})
 			r.Get("/user/urls", h.GetUserURLs)
+			r.Delete("/user/urls", h.DeleteUserURLs)
 		})
 	})
 

@@ -15,7 +15,7 @@ import (
 var ErrShortNotFound = errors.New("short not found")
 
 type memoryRepository struct {
-	matchPairs  map[string]map[string]string
+	matchPairs  map[string]map[string]model.MemoryStorage
 	storagePath string
 	mu          sync.RWMutex
 }
@@ -35,26 +35,31 @@ func (m *memoryRepository) Save(ctx context.Context, values []model.URLInfo) err
 	userID := ctx.Value(model.UserIDContextKey).(string)
 
 	if m.matchPairs[userID] == nil {
-		m.matchPairs[userID] = make(map[string]string)
+		m.matchPairs[userID] = make(map[string]model.MemoryStorage)
 	}
 
 	for _, value := range values {
-		m.matchPairs[userID][value.ShortURL] = value.OriginalURL
+		m.matchPairs[userID][value.ShortURL] = model.MemoryStorage{Original: value.OriginalURL, IsDelete: false}
 	}
 	return nil
 }
 
-func (m *memoryRepository) Get(_ context.Context, short string) (string, error) {
+func (m *memoryRepository) Get(_ context.Context, short string) (model.UserURL, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
 	for _, userInfo := range m.matchPairs {
-		if val, okShort := userInfo[short]; okShort {
-			return val, nil
+		val, okShort := userInfo[short]
+		if !okShort {
+			continue
 		}
+		if val.IsDelete {
+			return model.UserURL{}, ErrShortNotFound
+		}
+		return model.UserURL{OriginalURL: val.Original, ShortURL: short}, nil
 	}
 
-	return "", ErrShortNotFound
+	return model.UserURL{}, ErrShortNotFound
 }
 
 func (m *memoryRepository) GetUserURLs(ctx context.Context) ([]model.UserURL, error) {
@@ -70,17 +75,33 @@ func (m *memoryRepository) GetUserURLs(ctx context.Context) ([]model.UserURL, er
 	}
 
 	for short, origin := range userInfo {
-		urls = append(urls, model.UserURL{ShortURL: short, OriginalURL: origin})
+		urls = append(urls, model.UserURL{ShortURL: short, OriginalURL: origin.Original})
 	}
 
 	return urls, nil
+}
+
+func (m *memoryRepository) DeleteUserURLs(_ context.Context, userID string, urls []string) error {
+	userInfo, okUser := m.matchPairs[userID]
+	if !okUser {
+		return nil
+	}
+
+	for _, url := range urls {
+		if val, ok := userInfo[url]; ok {
+			val.IsDelete = true
+			userInfo[url] = val
+		}
+	}
+
+	return nil
 }
 
 func (m *memoryRepository) Close() {
 	saveData(m.storagePath, m.matchPairs)
 }
 
-func saveData(storagePath string, data map[string]map[string]string) {
+func saveData(storagePath string, data map[string]map[string]model.MemoryStorage) {
 	if len(data) == 0 {
 		return
 	}
@@ -91,7 +112,8 @@ func saveData(storagePath string, data map[string]map[string]string) {
 			temp = append(temp, model.FileStorage{
 				UUID:     strconv.FormatInt(index, 10),
 				Short:    short,
-				Original: origin,
+				Original: origin.Original,
+				IsDelete: origin.IsDelete,
 				UserID:   user,
 			})
 			index++
@@ -120,8 +142,8 @@ func saveData(storagePath string, data map[string]map[string]string) {
 	}
 }
 
-func loadData(storagePath string) map[string]map[string]string {
-	matchPairs := make(map[string]map[string]string)
+func loadData(storagePath string) map[string]map[string]model.MemoryStorage {
+	matchPairs := make(map[string]map[string]model.MemoryStorage)
 	if storagePath == "" {
 		return matchPairs
 	}
@@ -144,7 +166,7 @@ func loadData(storagePath string) map[string]map[string]string {
 	}
 
 	for _, s := range temp {
-		matchPairs[s.UserID][s.Short] = s.Original
+		matchPairs[s.UserID][s.Short] = model.MemoryStorage{Original: s.Original, IsDelete: s.IsDelete}
 	}
 	return matchPairs
 }

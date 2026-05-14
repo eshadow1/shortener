@@ -3,14 +3,17 @@ package configs
 import (
 	"flag"
 	"os"
+	"strconv"
 )
 
 const (
-	DefaultEmptySting    = ""
-	DefaultAddr          = "localhost:8080"
-	DefaultBaseURL       = "http://localhost:8080"
-	DefaultLevelLog      = "info"
-	DefaultMigrationPath = "./migrations"
+	DefaultEmptySting     = ""
+	DefaultAddr           = "localhost:8080"
+	DefaultBaseURL        = "http://localhost:8080"
+	DefaultLevelLog       = "info"
+	DefaultMigrationPath  = "./migrations"
+	DefaultBufferSizeChan = 1
+	DefaultBatchSize      = 1
 )
 
 type StorageConfig struct {
@@ -28,12 +31,18 @@ type AuthConfig struct {
 	TokenIssuer string
 }
 
+type ServiceConfig struct {
+	BufferSizeChan int
+	BatchSize      int
+}
+
 type Config struct {
 	Addr    string
 	BaseURL string
 	Log     LogConfig
 	Storage StorageConfig
 	Auth    AuthConfig
+	Service ServiceConfig
 }
 
 func NewConfig() *Config {
@@ -73,6 +82,26 @@ func (c *Config) Init() {
 
 	if tokenIssuer, ok := os.LookupEnv("TOKEN_ISSUER"); ok {
 		c.Auth.TokenIssuer = tokenIssuer
+	}
+
+	if bufferSizeChan, ok := os.LookupEnv("BUFFER_SIZE_CHAN"); ok {
+		var errConv error
+		c.Service.BufferSizeChan, errConv = strconv.Atoi(bufferSizeChan)
+		if errConv != nil {
+			c.Service.BufferSizeChan = DefaultBufferSizeChan
+		}
+	} else {
+		c.Service.BufferSizeChan = DefaultBufferSizeChan
+	}
+
+	if batchSize, ok := os.LookupEnv("BATCH_SIZE"); ok {
+		var errConv error
+		c.Service.BatchSize, errConv = strconv.Atoi(batchSize)
+		if errConv != nil {
+			c.Service.BatchSize = DefaultBatchSize
+		}
+	} else {
+		c.Service.BatchSize = DefaultBatchSize
 	}
 }
 

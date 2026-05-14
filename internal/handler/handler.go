@@ -12,13 +12,19 @@ import (
 	"github.com/eshadow1/shortener/internal/configs"
 	"github.com/eshadow1/shortener/internal/loggers"
 	"github.com/eshadow1/shortener/internal/model"
+	"github.com/eshadow1/shortener/internal/service"
 	"github.com/go-chi/chi/v5"
+)
+
+const (
+	ContentTypeData = "application/json"
 )
 
 type Service interface {
 	CreateShortURL(context.Context, []model.OriginalInfo) ([]model.ShortenInfo, error)
 	GetOriginalURL(context.Context, model.ShortenInfo) (model.OriginalInfo, error)
 	GetUserURLs(context.Context) ([]model.UserURL, error)
+	DeleteUserShortURLs(context.Context, []string) error
 }
 
 type Checker interface {
@@ -93,7 +99,7 @@ func (h *handler) PostShorten(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.Header.Get("Content-Type") != "application/json" {
+	if r.Header.Get("Content-Type") != ContentTypeData {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
@@ -131,7 +137,7 @@ func (h *handler) PostShorten(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", ContentTypeData)
 
 	bodyResponse, errMarshal := json.Marshal(map[string]string{"result": short.ShortURL})
 	if errMarshal != nil {
@@ -157,7 +163,7 @@ func (h *handler) PostShortenBatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.Header.Get("Content-Type") != "application/json" {
+	if r.Header.Get("Content-Type") != ContentTypeData {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
@@ -191,7 +197,7 @@ func (h *handler) PostShortenBatch(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", ContentTypeData)
 
 	bodyResponse, errMarshal := json.Marshal(shorts)
 	if errMarshal != nil {
@@ -220,6 +226,10 @@ func (h *handler) GetOrigin(w http.ResponseWriter, r *http.Request) {
 	short := chi.URLParam(r, "shortURL")
 	originalURL, errGet := h.s.GetOriginalURL(r.Context(), model.ShortenInfo{ShortURL: strings.TrimPrefix(short, "/")})
 	if errGet != nil {
+		if errors.Is(errGet, service.ErrorDeleteShortURL) {
+			http.Error(w, http.StatusText(http.StatusGone), http.StatusGone)
+			return
+		}
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
@@ -257,7 +267,7 @@ func (h *handler) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", ContentTypeData)
 
 	bodyResponse, errMarshal := json.Marshal(userURLs)
 	if errMarshal != nil {
@@ -292,6 +302,47 @@ func (h *handler) GetCheckDB(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	_, err := w.Write([]byte(http.StatusText(http.StatusOK)))
+	if err != nil {
+		loggers.Log.Errorf("Error writing response: %v", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (h *handler) DeleteUserURLs(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
+	if r.Method != http.MethodDelete {
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		return
+	}
+
+	if r.Header.Get("Content-Type") != ContentTypeData {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	var shortens []string
+	errUnmarshal := json.Unmarshal(body, &shortens)
+	if errUnmarshal != nil {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	errCreate := h.s.DeleteUserShortURLs(r.Context(), shortens)
+	if errCreate != nil {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	w.WriteHeader(http.StatusAccepted)
+	_, err = w.Write([]byte(http.StatusText(http.StatusAccepted)))
 	if err != nil {
 		loggers.Log.Errorf("Error writing response: %v", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)

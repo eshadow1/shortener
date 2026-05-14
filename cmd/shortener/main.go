@@ -50,7 +50,8 @@ func main() {
 	}
 	defer r.Close()
 
-	s := service.NewShortenerService(r)
+	s := service.NewShortenerService(r, cfg.Service)
+	defer s.Close()
 	c := service.NewCheckerService(rc)
 	h := handler.NewHandler(cfg, s, c)
 	rs := handler.InitRouter(cfg, h)
