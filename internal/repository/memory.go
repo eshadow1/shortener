@@ -82,6 +82,9 @@ func (m *memoryRepository) GetUserURLs(ctx context.Context) ([]model.UserURL, er
 }
 
 func (m *memoryRepository) DeleteUserURLs(_ context.Context, userID string, urls []string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	userInfo, okUser := m.matchPairs[userID]
 	if !okUser {
 		return nil

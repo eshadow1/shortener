@@ -111,8 +111,9 @@ func (c *Config) Init() {
 		temp, errConv := strconv.Atoi(flushInterval)
 		if errConv != nil {
 			c.Service.FlushInterval = DefaultFlushIntervalSecond
+		} else {
+			c.Service.FlushInterval = time.Duration(temp) * time.Second
 		}
-		c.Service.FlushInterval = time.Duration(temp) * time.Second
 	} else {
 		c.Service.FlushInterval = DefaultFlushIntervalSecond
 	}
