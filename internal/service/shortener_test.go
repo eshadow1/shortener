@@ -3,7 +3,9 @@ package service
 import (
 	"errors"
 	"testing"
+	"time"
 
+	"github.com/eshadow1/shortener/internal/configs"
 	"github.com/eshadow1/shortener/internal/model"
 	mockservice "github.com/eshadow1/shortener/mocks/service"
 	"github.com/stretchr/testify/assert"
@@ -12,11 +14,19 @@ import (
 )
 
 const (
-	correctShort = "42b3e75f"
-	correctURL   = "https://practicum.yandex.ru/"
+	correctShort   = "42b3e75f"
+	correctURL     = "https://practicum.yandex.ru/"
+	testBufferSize = 10
+	testBatchSize  = 10
+	testTimeout    = 10 * time.Second
 )
 
 func TestShortenerService_CreateShortUrl(t *testing.T) {
+	cfg := configs.ServiceConfig{
+		BufferSizeChan: testBufferSize,
+		BatchSize:      testBatchSize,
+		FlushInterval:  testTimeout,
+	}
 	tests := []struct {
 		name          string
 		url           []model.OriginalInfo
@@ -41,7 +51,7 @@ func TestShortenerService_CreateShortUrl(t *testing.T) {
 			mr := mockservice.NewMockRepository(t)
 			mr.On("Save", t.Context(), []model.URLInfo{{ShortURL: correctShort, OriginalURL: correctURL}}).Return(nil).Maybe()
 			mr.On("Save", t.Context(), mock.Anything, mock.Anything).Return(errors.New("don't save")).Maybe()
-			s := NewShortenerService(mr)
+			s := NewShortenerService(mr, cfg)
 
 			short, errSave := s.CreateShortURL(t.Context(), test.url)
 			if test.expectedError != nil {
@@ -55,6 +65,11 @@ func TestShortenerService_CreateShortUrl(t *testing.T) {
 }
 
 func TestShortenerService_GetShortUrl(t *testing.T) {
+	cfg := configs.ServiceConfig{
+		BufferSizeChan: testBufferSize,
+		BatchSize:      testBatchSize,
+		FlushInterval:  testTimeout,
+	}
 	tests := []struct {
 		name             string
 		short            model.ShortenInfo
@@ -77,9 +92,9 @@ func TestShortenerService_GetShortUrl(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			mr := mockservice.NewMockRepository(t)
-			mr.On("Get", t.Context(), correctShort).Return(correctURL, nil).Maybe()
-			mr.On("Get", t.Context(), mock.Anything).Return("", errors.New("not found")).Maybe()
-			s := NewShortenerService(mr)
+			mr.On("Get", t.Context(), correctShort).Return(model.UserURL{OriginalURL: correctURL, ShortURL: correctShort}, nil).Maybe()
+			mr.On("Get", t.Context(), mock.Anything).Return(model.UserURL{}, errors.New("not found")).Maybe()
+			s := NewShortenerService(mr, cfg)
 
 			original, errSave := s.GetOriginalURL(t.Context(), test.short)
 			if test.expectedError != nil {

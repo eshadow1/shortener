@@ -71,23 +71,86 @@ func (_c *MockRepository_Close_Call) RunAndReturn(run func()) *MockRepository_Cl
 	return _c
 }
 
+// DeleteUserURLs provides a mock function for the type MockRepository
+func (_mock *MockRepository) DeleteUserURLs(ctx context.Context, userID string, urls []string) error {
+	ret := _mock.Called(ctx, userID, urls)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteUserURLs")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, []string) error); ok {
+		r0 = returnFunc(ctx, userID, urls)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockRepository_DeleteUserURLs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteUserURLs'
+type MockRepository_DeleteUserURLs_Call struct {
+	*mock.Call
+}
+
+// DeleteUserURLs is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID string
+//   - urls []string
+func (_e *MockRepository_Expecter) DeleteUserURLs(ctx interface{}, userID interface{}, urls interface{}) *MockRepository_DeleteUserURLs_Call {
+	return &MockRepository_DeleteUserURLs_Call{Call: _e.mock.On("DeleteUserURLs", ctx, userID, urls)}
+}
+
+func (_c *MockRepository_DeleteUserURLs_Call) Run(run func(ctx context.Context, userID string, urls []string)) *MockRepository_DeleteUserURLs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 []string
+		if args[2] != nil {
+			arg2 = args[2].([]string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockRepository_DeleteUserURLs_Call) Return(err error) *MockRepository_DeleteUserURLs_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockRepository_DeleteUserURLs_Call) RunAndReturn(run func(ctx context.Context, userID string, urls []string) error) *MockRepository_DeleteUserURLs_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Get provides a mock function for the type MockRepository
-func (_mock *MockRepository) Get(ctx context.Context, key string) (string, error) {
+func (_mock *MockRepository) Get(ctx context.Context, key string) (model.UserURL, error) {
 	ret := _mock.Called(ctx, key)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Get")
 	}
 
-	var r0 string
+	var r0 model.UserURL
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (string, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (model.UserURL, error)); ok {
 		return returnFunc(ctx, key)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) string); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) model.UserURL); ok {
 		r0 = returnFunc(ctx, key)
 	} else {
-		r0 = ret.Get(0).(string)
+		r0 = ret.Get(0).(model.UserURL)
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
 		r1 = returnFunc(ctx, key)
@@ -127,12 +190,74 @@ func (_c *MockRepository_Get_Call) Run(run func(ctx context.Context, key string)
 	return _c
 }
 
-func (_c *MockRepository_Get_Call) Return(s string, err error) *MockRepository_Get_Call {
-	_c.Call.Return(s, err)
+func (_c *MockRepository_Get_Call) Return(userURL model.UserURL, err error) *MockRepository_Get_Call {
+	_c.Call.Return(userURL, err)
 	return _c
 }
 
-func (_c *MockRepository_Get_Call) RunAndReturn(run func(ctx context.Context, key string) (string, error)) *MockRepository_Get_Call {
+func (_c *MockRepository_Get_Call) RunAndReturn(run func(ctx context.Context, key string) (model.UserURL, error)) *MockRepository_Get_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetUserURLs provides a mock function for the type MockRepository
+func (_mock *MockRepository) GetUserURLs(ctx context.Context) ([]model.UserURL, error) {
+	ret := _mock.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetUserURLs")
+	}
+
+	var r0 []model.UserURL
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context) ([]model.UserURL, error)); ok {
+		return returnFunc(ctx)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context) []model.UserURL); ok {
+		r0 = returnFunc(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]model.UserURL)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = returnFunc(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockRepository_GetUserURLs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUserURLs'
+type MockRepository_GetUserURLs_Call struct {
+	*mock.Call
+}
+
+// GetUserURLs is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockRepository_Expecter) GetUserURLs(ctx interface{}) *MockRepository_GetUserURLs_Call {
+	return &MockRepository_GetUserURLs_Call{Call: _e.mock.On("GetUserURLs", ctx)}
+}
+
+func (_c *MockRepository_GetUserURLs_Call) Run(run func(ctx context.Context)) *MockRepository_GetUserURLs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockRepository_GetUserURLs_Call) Return(userURLs []model.UserURL, err error) *MockRepository_GetUserURLs_Call {
+	_c.Call.Return(userURLs, err)
+	return _c
+}
+
+func (_c *MockRepository_GetUserURLs_Call) RunAndReturn(run func(ctx context.Context) ([]model.UserURL, error)) *MockRepository_GetUserURLs_Call {
 	_c.Call.Return(run)
 	return _c
 }

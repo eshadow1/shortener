@@ -3,14 +3,19 @@ package configs
 import (
 	"flag"
 	"os"
+	"strconv"
+	"time"
 )
 
 const (
-	DefaultEmptySting    = ""
-	DefaultAddr          = "localhost:8080"
-	DefaultBaseURL       = "http://localhost:8080"
-	DefaultLevelLog      = "info"
-	DefaultMigrationPath = "./migrations"
+	DefaultEmptySting          = ""
+	DefaultAddr                = "localhost:8080"
+	DefaultBaseURL             = "http://localhost:8080"
+	DefaultLevelLog            = "info"
+	DefaultMigrationPath       = "./migrations"
+	DefaultBufferSizeChan      = 100
+	DefaultBatchSize           = 10
+	DefaultFlushIntervalSecond = 15 * time.Second
 )
 
 type StorageConfig struct {
@@ -23,11 +28,24 @@ type LogConfig struct {
 	Level string
 }
 
+type AuthConfig struct {
+	JWTSecret   []byte
+	TokenIssuer string
+}
+
+type ServiceConfig struct {
+	BufferSizeChan int
+	BatchSize      int
+	FlushInterval  time.Duration
+}
+
 type Config struct {
 	Addr    string
 	BaseURL string
 	Log     LogConfig
 	Storage StorageConfig
+	Auth    AuthConfig
+	Service ServiceConfig
 }
 
 func NewConfig() *Config {
@@ -56,8 +74,48 @@ func (c *Config) Init() {
 	if pathDB, ok := os.LookupEnv("DATABASE_DSN"); ok {
 		c.Storage.PathDB = pathDB
 	}
+
 	if pathMigration, ok := os.LookupEnv("MIGRATION_PATH"); ok {
 		c.Storage.PathMigrations = pathMigration
+	}
+
+	if jwtSecret, ok := os.LookupEnv("JWT_SECRET"); ok {
+		c.Auth.JWTSecret = []byte(jwtSecret)
+	}
+
+	if tokenIssuer, ok := os.LookupEnv("TOKEN_ISSUER"); ok {
+		c.Auth.TokenIssuer = tokenIssuer
+	}
+
+	if bufferSizeChan, ok := os.LookupEnv("BUFFER_SIZE_CHAN"); ok {
+		var errConv error
+		c.Service.BufferSizeChan, errConv = strconv.Atoi(bufferSizeChan)
+		if errConv != nil {
+			c.Service.BufferSizeChan = DefaultBufferSizeChan
+		}
+	} else {
+		c.Service.BufferSizeChan = DefaultBufferSizeChan
+	}
+
+	if batchSize, ok := os.LookupEnv("BATCH_SIZE"); ok {
+		var errConv error
+		c.Service.BatchSize, errConv = strconv.Atoi(batchSize)
+		if errConv != nil {
+			c.Service.BatchSize = DefaultBatchSize
+		}
+	} else {
+		c.Service.BatchSize = DefaultBatchSize
+	}
+
+	if flushInterval, ok := os.LookupEnv("FLUSH_INTERVAL"); ok {
+		temp, errConv := strconv.Atoi(flushInterval)
+		if errConv != nil {
+			c.Service.FlushInterval = DefaultFlushIntervalSecond
+		} else {
+			c.Service.FlushInterval = time.Duration(temp) * time.Second
+		}
+	} else {
+		c.Service.FlushInterval = DefaultFlushIntervalSecond
 	}
 }
 

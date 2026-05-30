@@ -106,6 +106,63 @@ func (_c *MockService_CreateShortURL_Call) RunAndReturn(run func(context1 contex
 	return _c
 }
 
+// DeleteUserShortURLs provides a mock function for the type MockService
+func (_mock *MockService) DeleteUserShortURLs(context1 context.Context, strings []string) error {
+	ret := _mock.Called(context1, strings)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteUserShortURLs")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, []string) error); ok {
+		r0 = returnFunc(context1, strings)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockService_DeleteUserShortURLs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteUserShortURLs'
+type MockService_DeleteUserShortURLs_Call struct {
+	*mock.Call
+}
+
+// DeleteUserShortURLs is a helper method to define mock.On call
+//   - context1 context.Context
+//   - strings []string
+func (_e *MockService_Expecter) DeleteUserShortURLs(context1 interface{}, strings interface{}) *MockService_DeleteUserShortURLs_Call {
+	return &MockService_DeleteUserShortURLs_Call{Call: _e.mock.On("DeleteUserShortURLs", context1, strings)}
+}
+
+func (_c *MockService_DeleteUserShortURLs_Call) Run(run func(context1 context.Context, strings []string)) *MockService_DeleteUserShortURLs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 []string
+		if args[1] != nil {
+			arg1 = args[1].([]string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockService_DeleteUserShortURLs_Call) Return(err error) *MockService_DeleteUserShortURLs_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockService_DeleteUserShortURLs_Call) RunAndReturn(run func(context1 context.Context, strings []string) error) *MockService_DeleteUserShortURLs_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetOriginalURL provides a mock function for the type MockService
 func (_mock *MockService) GetOriginalURL(context1 context.Context, shortenInfo model.ShortenInfo) (model.OriginalInfo, error) {
 	ret := _mock.Called(context1, shortenInfo)
@@ -168,6 +225,68 @@ func (_c *MockService_GetOriginalURL_Call) Return(originalInfo model.OriginalInf
 }
 
 func (_c *MockService_GetOriginalURL_Call) RunAndReturn(run func(context1 context.Context, shortenInfo model.ShortenInfo) (model.OriginalInfo, error)) *MockService_GetOriginalURL_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetUserURLs provides a mock function for the type MockService
+func (_mock *MockService) GetUserURLs(context1 context.Context) ([]model.UserURL, error) {
+	ret := _mock.Called(context1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetUserURLs")
+	}
+
+	var r0 []model.UserURL
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context) ([]model.UserURL, error)); ok {
+		return returnFunc(context1)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context) []model.UserURL); ok {
+		r0 = returnFunc(context1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]model.UserURL)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = returnFunc(context1)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockService_GetUserURLs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUserURLs'
+type MockService_GetUserURLs_Call struct {
+	*mock.Call
+}
+
+// GetUserURLs is a helper method to define mock.On call
+//   - context1 context.Context
+func (_e *MockService_Expecter) GetUserURLs(context1 interface{}) *MockService_GetUserURLs_Call {
+	return &MockService_GetUserURLs_Call{Call: _e.mock.On("GetUserURLs", context1)}
+}
+
+func (_c *MockService_GetUserURLs_Call) Run(run func(context1 context.Context)) *MockService_GetUserURLs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockService_GetUserURLs_Call) Return(userURLs []model.UserURL, err error) *MockService_GetUserURLs_Call {
+	_c.Call.Return(userURLs, err)
+	return _c
+}
+
+func (_c *MockService_GetUserURLs_Call) RunAndReturn(run func(context1 context.Context) ([]model.UserURL, error)) *MockService_GetUserURLs_Call {
 	_c.Call.Return(run)
 	return _c
 }

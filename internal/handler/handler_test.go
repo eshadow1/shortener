@@ -350,7 +350,7 @@ func TestHandler_GetCheckDB(t *testing.T) {
 			method:         http.MethodGet,
 			resultCheck:    nil,
 			expectedStatus: http.StatusOK,
-			expectedBody:   http.StatusText(http.StatusOK) + "\n",
+			expectedBody:   http.StatusText(http.StatusOK),
 		},
 		{
 			name:           "bad_method",

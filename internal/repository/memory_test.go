@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -13,37 +14,46 @@ const (
 	defaultOriginal    = "https://practicum.yandex.ru/"
 	defaultShort       = "abcdefgh"
 	defaultStoragePath = ""
+	defaultUUID        = "1234-test-uuid"
 )
 
 func TestRepository_Get(t *testing.T) {
 	m := NewMemoryRepository(defaultStoragePath)
-
-	errSave := m.Save(t.Context(), []model.URLInfo{{ShortURL: defaultShort, OriginalURL: defaultOriginal}})
+	ctx := context.WithValue(t.Context(), model.UserIDContextKey, defaultUUID)
+	errSave := m.Save(ctx, []model.URLInfo{{ShortURL: defaultShort, OriginalURL: defaultOriginal}})
 	require.NoError(t, errSave)
 
 	tests := []struct {
 		name             string
 		short            string
-		expectedOriginal string
+		expectedOriginal model.UserURL
 		expectedError    error
 	}{
 		{
 
-			name:             "success",
-			short:            defaultShort,
-			expectedOriginal: defaultOriginal,
-			expectedError:    nil,
+			name:  "success",
+			short: defaultShort,
+			expectedOriginal: model.UserURL{
+				OriginalURL: defaultOriginal,
+				ShortURL:    defaultShort,
+				IsDeleted:   false,
+			},
+			expectedError: nil,
 		},
 		{
-			name:             "error_get",
-			short:            "not_found",
-			expectedOriginal: "",
-			expectedError:    errors.New("short not found"),
+			name:  "error_get",
+			short: "not_found",
+			expectedOriginal: model.UserURL{
+				OriginalURL: "",
+				ShortURL:    "",
+				IsDeleted:   false,
+			},
+			expectedError: errors.New("short not found"),
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			original, errGet := m.Get(t.Context(), test.short)
+			original, errGet := m.Get(ctx, test.short)
 			if test.expectedError != nil {
 				assert.Equal(t, test.expectedError, errGet)
 			} else {
