@@ -39,6 +39,11 @@ type ServiceConfig struct {
 	FlushInterval  time.Duration
 }
 
+type AuditConfig struct {
+	File string
+	URL  string
+}
+
 type Config struct {
 	Addr    string
 	BaseURL string
@@ -46,6 +51,7 @@ type Config struct {
 	Storage StorageConfig
 	Auth    AuthConfig
 	Service ServiceConfig
+	Audit   AuditConfig
 }
 
 func NewConfig() *Config {
@@ -55,37 +61,20 @@ func NewConfig() *Config {
 func (c *Config) Init() {
 	c.parseWithFlag()
 
-	if addr, ok := os.LookupEnv("SERVER_ADDRESS"); ok {
-		c.Addr = addr
-	}
+	c.Addr = c.updateEnv("SERVER_ADDRESS", c.Addr)
+	c.BaseURL = c.updateEnv("BASE_URL", c.BaseURL)
 
-	if baseUrl, ok := os.LookupEnv("BASE_URL"); ok {
-		c.BaseURL = baseUrl
-	}
+	c.Log.Level = c.updateEnv("LOG_LEVEL", c.Log.Level)
 
-	if levelLog, ok := os.LookupEnv("LEVEL_LOG"); ok {
-		c.Log.Level = levelLog
-	}
+	c.Storage.Path = c.updateEnv("FILE_STORAGE_PATH", c.Storage.Path)
+	c.Storage.PathDB = c.updateEnv("DATABASE_DSN", c.Storage.PathDB)
+	c.Storage.PathMigrations = c.updateEnv("MIGRATION_PATH", c.Storage.PathMigrations)
 
-	if storagePath, ok := os.LookupEnv("FILE_STORAGE_PATH"); ok {
-		c.Storage.Path = storagePath
-	}
+	c.Auth.JWTSecret = []byte(c.updateEnv("JWT_SECRET", string(c.Auth.JWTSecret)))
+	c.Auth.TokenIssuer = c.updateEnv("TOKEN_ISSUER", c.Auth.TokenIssuer)
 
-	if pathDB, ok := os.LookupEnv("DATABASE_DSN"); ok {
-		c.Storage.PathDB = pathDB
-	}
-
-	if pathMigration, ok := os.LookupEnv("MIGRATION_PATH"); ok {
-		c.Storage.PathMigrations = pathMigration
-	}
-
-	if jwtSecret, ok := os.LookupEnv("JWT_SECRET"); ok {
-		c.Auth.JWTSecret = []byte(jwtSecret)
-	}
-
-	if tokenIssuer, ok := os.LookupEnv("TOKEN_ISSUER"); ok {
-		c.Auth.TokenIssuer = tokenIssuer
-	}
+	c.Audit.File = c.updateEnv("AUDIT_FILE", c.Audit.File)
+	c.Audit.URL = c.updateEnv("AUDIT_URL", c.Audit.URL)
 
 	if bufferSizeChan, ok := os.LookupEnv("BUFFER_SIZE_CHAN"); ok {
 		var errConv error
@@ -126,6 +115,15 @@ func (c *Config) parseWithFlag() {
 	flag.StringVar(&c.Storage.Path, "f", DefaultEmptySting, "file storage path")
 	flag.StringVar(&c.Storage.PathDB, "d", DefaultEmptySting, "file storage path")
 	flag.StringVar(&c.Storage.PathMigrations, "m", DefaultMigrationPath, "migrations path")
+	flag.StringVar(&c.Audit.URL, "audit-url", DefaultEmptySting, "path to audit log file")
+	flag.StringVar(&c.Audit.File, "audit-file", DefaultEmptySting, "remote audit server URL")
 
 	flag.Parse()
+}
+
+func (*Config) updateEnv(name, defaultValue string) string {
+	if value, ok := os.LookupEnv(name); ok {
+		return value
+	}
+	return defaultValue
 }

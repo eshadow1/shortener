@@ -11,6 +11,7 @@ import (
 
 	"net/http"
 
+	"github.com/eshadow1/shortener/internal/audit"
 	"github.com/eshadow1/shortener/internal/configs"
 	"github.com/eshadow1/shortener/internal/handler"
 	"github.com/eshadow1/shortener/internal/loggers"
@@ -50,11 +51,22 @@ func main() {
 	}
 	defer r.Close()
 
+	a := service.NewAuditBroker()
+
+	if af := audit.NewFileObserver(cfg.Audit.File); af != nil {
+		a.Register(af)
+	}
+
+	if ar := audit.NewRemoteObserver(cfg.Audit.URL); ar != nil {
+		a.Register(ar)
+	}
+
 	s := service.NewShortenerService(r, cfg.Service)
 	defer s.Close()
 	c := service.NewCheckerService(rc)
 	h := handler.NewHandler(cfg, s, c)
-	rs := handler.InitRouter(cfg, h)
+
+	rs := handler.InitRouter(cfg, h, a)
 
 	server := &http.Server{
 		Addr:         cfg.Addr,

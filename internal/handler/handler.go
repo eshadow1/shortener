@@ -90,6 +90,8 @@ func (h *handler) PostCreate(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
+
+	SetAuditData(r, model.Shorten, originalURL)
 }
 
 func (h *handler) PostShorten(w http.ResponseWriter, r *http.Request) {
@@ -153,6 +155,8 @@ func (h *handler) PostShorten(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
+
+	SetAuditData(r, model.Shorten, req.OriginalURL)
 }
 
 func (h *handler) PostShortenBatch(w http.ResponseWriter, r *http.Request) {
@@ -236,6 +240,7 @@ func (h *handler) GetOrigin(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Location", originalURL.OriginalURL)
 	w.WriteHeader(http.StatusTemporaryRedirect)
+	SetAuditData(r, model.Follow, originalURL.OriginalURL)
 }
 
 func (h *handler) GetUserURLs(w http.ResponseWriter, r *http.Request) {

@@ -23,17 +23,24 @@ type RouterHandler interface {
 	DeleteUserURLs(w http.ResponseWriter, r *http.Request)
 }
 
-func InitRouter(cfg *configs.Config, h RouterHandler) *chi.Mux {
+func InitRouter(cfg *configs.Config, h RouterHandler, a AuditBroker) *chi.Mux {
+	audit := AuditMiddleware(a)
+
 	rs := chi.NewRouter()
 	rs.Use(LoggerMiddleware(), GzipMiddleware(), AuthMiddleware(&cfg.Auth), middleware.Timeout(timeoutRequest))
-
 	rs.Route("/", func(r chi.Router) {
-		r.Post("/", h.PostCreate)
-		r.Get("/{shortURL}", h.GetOrigin)
-		rs.Get("/ping", h.GetCheckDB)
+		r.Route("/", func(r chi.Router) {
+			r.Use(audit)
+			r.Post("/", h.PostCreate)
+			r.Get("/{shortURL}", h.GetOrigin)
+		})
+		r.Get("/ping", h.GetCheckDB)
 		r.Route("/api", func(r chi.Router) {
 			r.Route("/shorten", func(r chi.Router) {
-				r.Post("/", h.PostShorten)
+				r.Route("/", func(r chi.Router) {
+					r.Use(audit)
+					r.Post("/", h.PostShorten)
+				})
 				r.Post("/batch", h.PostShortenBatch)
 			})
 			r.Get("/user/urls", h.GetUserURLs)

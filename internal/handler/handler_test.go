@@ -391,3 +391,166 @@ func TestHandler_GetCheckDB(t *testing.T) {
 		})
 	}
 }
+
+func TestHandler_GetUserURLs(t *testing.T) {
+	cfg := &configs.Config{
+		Addr:    configs.DefaultAddr,
+		BaseURL: configs.DefaultBaseURL,
+	}
+	errLog := loggers.CreateLogger("Error")
+	require.NoError(t, errLog)
+
+	tests := []struct {
+		name                string
+		method              string
+		userURLs            []model.UserURL
+		errService          error
+		expectedStatus      int
+		expectedContentType string
+		expectedBody        string
+	}{
+		{
+			name:   "success_get_user_urls",
+			method: http.MethodGet,
+			userURLs: []model.UserURL{
+				{
+					OriginalURL: "test",
+					ShortURL:    "t",
+					IsDeleted:   false,
+				},
+			},
+			errService:          nil,
+			expectedStatus:      http.StatusOK,
+			expectedContentType: "application/json",
+			expectedBody:        "[{\"original_url\":\"test\",\"short_url\":\"http://localhost:8080/t\",\"is_deleted\":false}]",
+		},
+		{
+			name:                "success_get_without_user_urls",
+			method:              http.MethodGet,
+			userURLs:            []model.UserURL{},
+			errService:          nil,
+			expectedStatus:      http.StatusNoContent,
+			expectedContentType: "",
+			expectedBody:        "",
+		},
+		{
+			name:   "bad_method",
+			method: http.MethodPost,
+			userURLs: []model.UserURL{
+				{
+					OriginalURL: "test",
+					ShortURL:    "t",
+					IsDeleted:   false,
+				},
+			},
+			errService:          nil,
+			expectedStatus:      http.StatusMethodNotAllowed,
+			expectedContentType: "text/plain; charset=utf-8",
+			expectedBody:        http.StatusText(http.StatusMethodNotAllowed) + "\n",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			req := httptest.NewRequestWithContext(t.Context(), test.method, "/user/urls", http.NoBody)
+
+			w := httptest.NewRecorder()
+
+			mc := mockhandler.NewMockChecker(t)
+			mc.On("ConnectDB", mock.Anything).Return(nil).Maybe()
+
+			ms := mockhandler.NewMockService(t)
+			ms.On("GetUserURLs", t.Context()).Return(test.userURLs, test.errService).Maybe()
+
+			h := NewHandler(cfg, ms, mc)
+
+			h.GetUserURLs(w, req)
+
+			body, err := io.ReadAll(w.Body)
+			require.NoError(t, err)
+
+			assert.Equal(t, test.expectedStatus, w.Code)
+			assert.Equal(t, test.expectedContentType, w.Header().Get("Content-Type"))
+			assert.Equal(t, test.expectedBody, string(body))
+		})
+	}
+}
+
+func TestHandler_DeleteUserURLs(t *testing.T) {
+	cfg := &configs.Config{
+		Addr:    configs.DefaultAddr,
+		BaseURL: configs.DefaultBaseURL,
+	}
+	errLog := loggers.CreateLogger("Error")
+	require.NoError(t, errLog)
+
+	tests := []struct {
+		name           string
+		method         string
+		urlsDelete     string
+		contentType    string
+		errDelete      error
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:           "success_delete",
+			method:         http.MethodDelete,
+			urlsDelete:     "[\"test\"]",
+			contentType:    "application/json",
+			errDelete:      nil,
+			expectedStatus: http.StatusAccepted,
+			expectedBody:   http.StatusText(http.StatusAccepted),
+		},
+		{
+			name:           "bad_method",
+			method:         http.MethodGet,
+			urlsDelete:     "[\"test\"]",
+			contentType:    "application/json",
+			errDelete:      nil,
+			expectedStatus: http.StatusMethodNotAllowed,
+			expectedBody:   http.StatusText(http.StatusMethodNotAllowed) + "\n",
+		},
+		{
+			name:           "bad_service",
+			method:         http.MethodDelete,
+			urlsDelete:     "[\"test\"]",
+			contentType:    "application/json",
+			errDelete:      errors.New("error"),
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   http.StatusText(http.StatusBadRequest) + "\n",
+		},
+		{
+			name:           "bad_content_type",
+			method:         http.MethodDelete,
+			urlsDelete:     "[\"test\"]",
+			contentType:    "text/plain; charset=utf-8",
+			errDelete:      nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   http.StatusText(http.StatusBadRequest) + "\n",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			req := httptest.NewRequestWithContext(t.Context(), test.method, "/user/urls", strings.NewReader(test.urlsDelete))
+			req.Header.Set("Content-Type", test.contentType)
+
+			w := httptest.NewRecorder()
+
+			mc := mockhandler.NewMockChecker(t)
+			mc.On("ConnectDB", mock.Anything).Return(nil).Maybe()
+
+			ms := mockhandler.NewMockService(t)
+			ms.On("DeleteUserShortURLs", t.Context(), mock.Anything).Return(test.errDelete).Maybe()
+
+			h := NewHandler(cfg, ms, mc)
+
+			h.DeleteUserURLs(w, req)
+
+			body, err := io.ReadAll(w.Body)
+			require.NoError(t, err)
+
+			assert.Equal(t, test.expectedStatus, w.Code)
+			assert.Equal(t, test.expectedBody, string(body))
+		})
+	}
+}
