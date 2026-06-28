@@ -10,10 +10,11 @@ import (
 )
 
 func AuthMiddleware(cfg *configs.AuthConfig) func(http.Handler) http.Handler {
+	worker := service.NewJWTWorker(cfg)
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
-			worker := service.NewJWTWorker(cfg)
 			cookie, errCookie := r.Cookie(service.CookieName)
 			if errCookie != nil || cookie.Value == "" {
 				uid, errCreate := worker.CreateNewJWTForUser(w)

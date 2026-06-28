@@ -1,3 +1,47 @@
+# shortener
+
+## Бенчмарки и оптимизация памяти
+
+### Запуск бенчмарков
+
+```bash
+go test -bench=Benchmark -benchmem -memprofile='profiles/result.pprof' -run=^$ .\internal\handler
+```
+
+### Профилирование памяти
+
+```bash
+
+go test -bench=Benchmark -benchmem -memprofile=profiles/base.pprof -run=^$ .\internal\handler
+
+go test -bench=Benchmark -benchmem -memprofile=profiles/result.pprof -run=^$ .\internal\handler
+
+go tool pprof -top -diff_base=profiles/base.pprof profiles/result.pprof
+```
+
+### Вывод `pprof -diff_base`
+```
+Type: alloc_space
+Time: 2026-06-28 17:32:55 MSK
+Showing nodes accounting for -6MB, 5.99% of 100.14MB total
+Dropped 6 nodes (cum <= 0.50MB)
+      flat  flat%   sum%        cum   cum%
+      -3MB  3.00%  3.00%       -4MB  4.00%  github.com/golang-jwt/jwt/v5.(*Token).SignedString
+      -3MB  3.00%  5.99%       -3MB  3.00%  context.(*cancelCtx).propagateCancel
+    2.50MB  2.50%  3.50%        3MB  3.00%  net/http.readRequest
+    2.50MB  2.50%     1%     2.50MB  2.50%  crypto/internal/fips140/sha256.New (inline)
+      -2MB  2.00%  3.00%       -2MB  2.00%  github.com/golang-jwt/jwt/v5.NewWithClaims (inline)
+       2MB  2.00%     1%     2.50MB  2.50%  context.WithDeadlineCause
+      -2MB  2.00%  3.00%     0.50MB   0.5%  crypto/internal/fips140/hmac.New[go.shape.interface { BlockSize int; Reset; Size int; Sum []uint8; Write  }]
+    1.50MB  1.50%  1.50%     1.50MB  1.50%  github.com/jackc/pgx/v5.(*Conn).getRows
+   -1.50MB  1.50%  3.00%    -1.50MB  1.50%  net/http.(*Request).SetPathValue (inline)
+   -1.50MB  1.50%  4.49%       -1MB     1%  github.com/golang-jwt/jwt/v5.(*SigningMethodHMAC).Sign
+    1.50MB  1.50%  3.00%        3MB  3.00%  github.com/jackc/pgx/v5/stdlib.(*Conn).QueryContext
+   -1.50MB  1.50%  4.49%    -1.50MB  1.50%  net/http/httptest.NewRecorder (inline)
+   ...
+```
+
+
 # go-musthave-shortener-tpl
 
 Шаблон репозитория для трека «Сервис сокращения URL».
@@ -42,3 +86,4 @@ git fetch template && git checkout template/v2 .github
 - **Clean Architecture**
 - **Hexagonal Architecture**
 - **Layered Architecture**
+

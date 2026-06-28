@@ -45,10 +45,14 @@ func NewPostgreSQLRepository(cfg configs.StorageConfig) (*postgreSQLRepository, 
 	db.SetMaxIdleConns(defaultMaxIdleConnections)
 	db.SetConnMaxLifetime(defaultConnMaxLifetime)
 
-	if errMigrate := runMigrationsWithDB(db, "file://"+cfg.PathMigrations); errMigrate != nil {
-		return nil, fmt.Errorf("error migrate: %w", errMigrate)
+	if cfg.PathMigrations != "" {
+		if errMigrate := runMigrationsWithDB(db, "file://"+cfg.PathMigrations); errMigrate != nil {
+			return nil, fmt.Errorf("error migrate: %w", errMigrate)
+		}
+		loggers.Log.Info("Migrate successful")
+	} else {
+		loggers.Log.Info("Migrate disabled")
 	}
-	loggers.Log.Info("Migrate successful")
 
 	config, errParseConfig := pgxpool.ParseConfig(cfg.PathDB)
 	if errParseConfig != nil {

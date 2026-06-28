@@ -176,7 +176,7 @@ func TestHandler_PostShorten(t *testing.T) {
 			headerContentType:   "application/json",
 			expectedStatus:      http.StatusCreated,
 			expectedContentType: "application/json",
-			expectedBody:        fmt.Sprintf("{\"result\":%q}", configs.DefaultBaseURL+"/"+correctShort),
+			expectedBody:        fmt.Sprintf("{\"result\":%q}\n", configs.DefaultBaseURL+"/"+correctShort),
 		},
 		{
 			name:                "bad_method",
@@ -264,7 +264,7 @@ func TestHandler_PostShortenBatch(t *testing.T) {
 			headerContentType:   "application/json",
 			expectedStatus:      http.StatusCreated,
 			expectedContentType: "application/json",
-			expectedBody:        fmt.Sprintf("[{\"short_url\":%q,\"correlation_id\":\"1\"}]", configs.DefaultBaseURL+"/"+correctShort),
+			expectedBody:        fmt.Sprintf("[{\"short_url\":%q,\"correlation_id\":\"1\"}]\n", configs.DefaultBaseURL+"/"+correctShort),
 		},
 		{
 			name:                "bad_method",
@@ -422,7 +422,7 @@ func TestHandler_GetUserURLs(t *testing.T) {
 			errService:          nil,
 			expectedStatus:      http.StatusOK,
 			expectedContentType: "application/json",
-			expectedBody:        "[{\"original_url\":\"test\",\"short_url\":\"http://localhost:8080/t\",\"is_deleted\":false}]",
+			expectedBody:        "[{\"original_url\":\"test\",\"short_url\":\"http://localhost:8080/t\",\"is_deleted\":false}]\n",
 		},
 		{
 			name:                "success_get_without_user_urls",

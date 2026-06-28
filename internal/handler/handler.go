@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -59,7 +60,7 @@ func (h *handler) PostCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	originalURL := strings.TrimSpace(string(body))
+	originalURL := string(bytes.TrimSpace(body))
 	if originalURL == "" {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
@@ -84,9 +85,9 @@ func (h *handler) PostCreate(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(status)
-	_, err = w.Write([]byte(shortURL))
-	if err != nil {
-		loggers.Log.Errorf("Error writing response: %v", err)
+	_, errWrite := io.WriteString(w, shortURL)
+	if errWrite != nil {
+		loggers.Log.Errorf("Error writing response: %v", errWrite)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
@@ -106,15 +107,8 @@ func (h *handler) PostShorten(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-		return
-	}
-
 	var req model.OriginalInfo
-	errUnmarshal := json.Unmarshal(body, &req)
-	if errUnmarshal != nil {
+	if errUnmarshal := json.NewDecoder(r.Body).Decode(&req); errUnmarshal != nil {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
@@ -141,16 +135,8 @@ func (h *handler) PostShorten(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", ContentTypeData)
 
-	bodyResponse, errMarshal := json.Marshal(map[string]string{"result": short.ShortURL})
-	if errMarshal != nil {
-		loggers.Log.Errorf("Error marshaling response: %v", errMarshal)
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
-	}
-
 	w.WriteHeader(status)
-	_, err = w.Write(bodyResponse)
-	if err != nil {
+	if err := json.NewEncoder(w).Encode(map[string]string{"result": short.ShortURL}); err != nil {
 		loggers.Log.Errorf("Error writing response: %v", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
@@ -172,15 +158,8 @@ func (h *handler) PostShortenBatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-		return
-	}
-
 	var req []model.OriginalInfo
-	errUnmarshal := json.Unmarshal(body, &req)
-	if errUnmarshal != nil {
+	if errUnmarshal := json.NewDecoder(r.Body).Decode(&req); errUnmarshal != nil {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
@@ -203,16 +182,8 @@ func (h *handler) PostShortenBatch(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", ContentTypeData)
 
-	bodyResponse, errMarshal := json.Marshal(shorts)
-	if errMarshal != nil {
-		loggers.Log.Errorf("Error marshaling response: %v", errMarshal)
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
-	}
-
 	w.WriteHeader(http.StatusCreated)
-	_, err = w.Write(bodyResponse)
-	if err != nil {
+	if err := json.NewEncoder(w).Encode(shorts); err != nil {
 		loggers.Log.Errorf("Error writing response: %v", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
@@ -274,16 +245,8 @@ func (h *handler) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", ContentTypeData)
 
-	bodyResponse, errMarshal := json.Marshal(userURLs)
-	if errMarshal != nil {
-		loggers.Log.Errorf("Error marshaling response: %v", errMarshal)
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
-	}
-
 	w.WriteHeader(http.StatusOK)
-	_, errBody := w.Write(bodyResponse)
-	if errBody != nil {
+	if errBody := json.NewEncoder(w).Encode(userURLs); errBody != nil {
 		loggers.Log.Errorf("Error writing response: %v", errBody)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
@@ -306,9 +269,9 @@ func (h *handler) GetCheckDB(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	_, err := w.Write([]byte(http.StatusText(http.StatusOK)))
-	if err != nil {
-		loggers.Log.Errorf("Error writing response: %v", err)
+	_, errWrite := io.WriteString(w, http.StatusText(http.StatusOK))
+	if errWrite != nil {
+		loggers.Log.Errorf("Error writing response: %v", errWrite)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
@@ -327,15 +290,8 @@ func (h *handler) DeleteUserURLs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-		return
-	}
-
 	var shortens []string
-	errUnmarshal := json.Unmarshal(body, &shortens)
-	if errUnmarshal != nil {
+	if errUnmarshal := json.NewDecoder(r.Body).Decode(&shortens); errUnmarshal != nil {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
@@ -347,9 +303,9 @@ func (h *handler) DeleteUserURLs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusAccepted)
-	_, err = w.Write([]byte(http.StatusText(http.StatusAccepted)))
-	if err != nil {
-		loggers.Log.Errorf("Error writing response: %v", err)
+	_, errWrite := io.WriteString(w, http.StatusText(http.StatusAccepted))
+	if errWrite != nil {
+		loggers.Log.Errorf("Error writing response: %v", errWrite)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
