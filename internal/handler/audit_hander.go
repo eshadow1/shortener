@@ -30,6 +30,7 @@ func GetAuditData(r *http.Request) *model.Event {
 	return v
 }
 
+// AuditBroker - брокер, который осуществляет рассылку.
 type AuditBroker interface {
 	Notify(model.Event)
 }

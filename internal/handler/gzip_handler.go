@@ -7,6 +7,8 @@ import (
 	"github.com/eshadow1/shortener/internal/encoding"
 )
 
+// GzipMiddleware создает middleware для прозрачного сжатия HTTP-ответов
+// и распаковки HTTP-запросов с использованием алгоритма gzip.
 func GzipMiddleware() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -1,3 +1,5 @@
+// Package repository предоставляет реализацию слоя доступа к данным (Data Access Layer)
+// для работы с базой данных PostgreSQL.
 package repository
 
 import (
@@ -35,6 +37,7 @@ type postgreSQLRepository struct {
 	pool *pgxpool.Pool
 }
 
+// NewPostgreSQLRepository создает и возвращает новый репозиторий для работы с PostgreSQL.
 func NewPostgreSQLRepository(cfg configs.StorageConfig) (*postgreSQLRepository, error) {
 	db, errOpen := sql.Open("pgx", cfg.PathDB)
 	if errOpen != nil {
@@ -74,10 +77,12 @@ func NewPostgreSQLRepository(cfg configs.StorageConfig) (*postgreSQLRepository, 
 	}, nil
 }
 
+// PingContext выполняет проверку доступности базы данных путем отправки ping-запроса.
 func (repo *postgreSQLRepository) PingContext(ctx context.Context) error {
 	return repo.db.PingContext(ctx)
 }
 
+// Save сохраняет переданный список URL-пар в базу данных в рамках одной транзакции.
 func (repo *postgreSQLRepository) Save(ctx context.Context, values []model.URLInfo) error {
 	const query = `
         INSERT INTO shorten (shorten_url, original_url, user_id)
@@ -120,6 +125,7 @@ func (repo *postgreSQLRepository) Save(ctx context.Context, values []model.URLIn
 	return tx.Commit()
 }
 
+// Get извлекает информацию об URL по его короткому варианту из базы данных.
 func (repo *postgreSQLRepository) Get(ctx context.Context, key string) (model.UserURL, error) {
 	const query = `
         SELECT original_url, shorten_url, is_deleted 
@@ -139,6 +145,7 @@ func (repo *postgreSQLRepository) Get(ctx context.Context, key string) (model.Us
 	return url, nil
 }
 
+// GetUserURLs возвращает список всех не удалённых URL-пар, принадлежащих пользователю.
 func (repo *postgreSQLRepository) GetUserURLs(ctx context.Context) ([]model.UserURL, error) {
 	const query = `
         SELECT original_url, shorten_url, is_deleted 
@@ -170,6 +177,7 @@ func (repo *postgreSQLRepository) GetUserURLs(ctx context.Context) ([]model.User
 	return urls, nil
 }
 
+// DeleteUserURLs выполняет удаление указанных коротких URL для заданного пользователя в рамках одной транзакции.
 func (repo *postgreSQLRepository) DeleteUserURLs(ctx context.Context, userID string, urls []string) error {
 	if len(urls) == 0 {
 		return nil
@@ -207,6 +215,7 @@ func (repo *postgreSQLRepository) DeleteUserURLs(ctx context.Context, userID str
 	return tx.Commit(ctx)
 }
 
+// Close закрывает соединение с базой данных и освобождает все связанные ресурсы.
 func (repo *postgreSQLRepository) Close() {
 	repo.db.Close()
 }

@@ -17,10 +17,13 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// ContentTypeData определяет стандартный MIME-тип для JSON-запросов и ответов.
 const (
 	ContentTypeData = "application/json"
 )
 
+// Service описывает контракт бизнес-логики для работы с сокращением,
+// получением и удалением URL-адресов.
 type Service interface {
 	CreateShortURL(context.Context, []model.OriginalInfo) ([]model.ShortenInfo, error)
 	GetOriginalURL(context.Context, model.ShortenInfo) (model.OriginalInfo, error)
@@ -28,6 +31,7 @@ type Service interface {
 	DeleteUserShortURLs(context.Context, []string) error
 }
 
+// Checker описывает интерфейс для проверки состояния и доступности базы данных.
 type Checker interface {
 	ConnectDB(ctx context.Context) error
 }
@@ -38,6 +42,8 @@ type handler struct {
 	c   Checker
 }
 
+// NewHandler создает и возвращает новый HTTP-обработчик,
+// инициализированный переданной конфигурацией, сервисом и компонентом проверки.
 func NewHandler(cfg *configs.Config, svc Service, check Checker) *handler {
 	return &handler{
 		cfg: cfg,
@@ -46,6 +52,8 @@ func NewHandler(cfg *configs.Config, svc Service, check Checker) *handler {
 	}
 }
 
+// PostCreate обрабатывает POST-запросы для создания короткого URL из оригинального URL,
+// переданного в теле запроса в текстовом формате.
 func (h *handler) PostCreate(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
@@ -95,6 +103,7 @@ func (h *handler) PostCreate(w http.ResponseWriter, r *http.Request) {
 	SetAuditData(r, model.Shorten, originalURL)
 }
 
+// PostShorten обрабатывает POST-запросы с JSON-телом для создания короткого URL и возвращает результат в формате JSON.
 func (h *handler) PostShorten(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	if r.Method != http.MethodPost {
@@ -145,6 +154,8 @@ func (h *handler) PostShorten(w http.ResponseWriter, r *http.Request) {
 	SetAuditData(r, model.Shorten, req.OriginalURL)
 }
 
+// PostShortenBatch обрабатывает POST-запросы для пакетного создания коротких URL,
+// принимая и возвращая массивы данных в формате JSON.
 func (h *handler) PostShortenBatch(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
@@ -190,6 +201,7 @@ func (h *handler) PostShortenBatch(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GetOrigin обрабатывает GET-запросы для замены короткого URL на оригинальный.
 func (h *handler) GetOrigin(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
@@ -214,6 +226,8 @@ func (h *handler) GetOrigin(w http.ResponseWriter, r *http.Request) {
 	SetAuditData(r, model.Follow, originalURL.OriginalURL)
 }
 
+// GetUserURLs обрабатывает GET-запросы для получения списка всех URL-адресов,
+// созданных текущим пользователем, и возвращает их в формате JSON.
 func (h *handler) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
@@ -253,6 +267,7 @@ func (h *handler) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GetCheckDB обрабатывает GET-запросы для проверки доступности и работоспособности соединения с базой данных.
 func (h *handler) GetCheckDB(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
@@ -277,6 +292,8 @@ func (h *handler) GetCheckDB(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// DeleteUserURLs обрабатывает DELETE-запросы для массового удаления коротких URL-адресов,
+// переданных в теле запроса в формате JSON.
 func (h *handler) DeleteUserURLs(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 

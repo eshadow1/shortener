@@ -26,7 +26,7 @@ const (
 	defaultBufferSizeChan      = 100
 	defaultBatchSize           = 10
 	defaultFlushIntervalSecond = 15 * time.Second
-	defaultUUID                = "test-test"
+	defaultUUID                = "96bd6aa2-6c78-4d02-8dc5-13ff6c5680af"
 )
 
 func routeInit() *chi.Mux {

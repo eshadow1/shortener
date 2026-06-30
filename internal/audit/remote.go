@@ -22,6 +22,8 @@ type remoteObserver struct {
 	client *http.Client
 }
 
+// NewRemoteObserver создает и возвращает нового удалённого наблюдателя,
+// который отправляет события аудита по указанному URL методом POST.
 func NewRemoteObserver(url string) *remoteObserver {
 	if url == "" {
 		loggers.Log.Info("No URL provided")
@@ -34,6 +36,8 @@ func NewRemoteObserver(url string) *remoteObserver {
 	}
 }
 
+// Notify отправляет переданное событие на удалённый сервер
+// в формате JSON методом POST с заголовком Content-Type: application/json.
 func (r *remoteObserver) Notify(event model.Event) {
 	data, err := json.Marshal(event)
 	if err != nil {

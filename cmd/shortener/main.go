@@ -1,3 +1,4 @@
+// Package main является точкой входа приложения Shortener
 package main
 
 import (
@@ -20,12 +21,21 @@ import (
 )
 
 const (
-	defaultReadTimeout     = 15 * time.Second
-	defaultWriteTimeout    = 15 * time.Second
-	defaultIdleTimeout     = 60 * time.Second
+	// defaultReadTimeout — максимальное время чтения всего HTTP-запроса,
+	// включая тело.
+	defaultReadTimeout = 15 * time.Second
+	// defaultWriteTimeout — максимальное время записи HTTP-ответа.
+	defaultWriteTimeout = 15 * time.Second
+	// defaultIdleTimeout — максимальное время простоя keep-alive соединения.
+	defaultIdleTimeout = 60 * time.Second
+	// defaultShutdownTimeout — максимальное время, отводимое на graceful shutdown
+	// сервера и фоновых процессов.
 	defaultShutdownTimeout = 30 * time.Second
 )
 
+// main — точка входа приложения. Выполняет инициализацию всех компонентов,
+// запуск HTTP-сервера и фонового воркера, ожидание сигнала завершения
+// и graceful shutdown.
 func main() {
 	cfg := configs.NewConfig()
 	cfg.Init()

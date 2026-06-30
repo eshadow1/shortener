@@ -19,6 +19,8 @@ type fileObserver struct {
 	mu       sync.Mutex
 }
 
+// NewFileObserver создает и возвращает новый файловый наблюдатель,
+// который записывает события аудита в файл по указанному пути.
 func NewFileObserver(filePath string) *fileObserver {
 	if filePath == "" {
 		loggers.Log.Info("No audit file path provided")
@@ -28,6 +30,8 @@ func NewFileObserver(filePath string) *fileObserver {
 	return &fileObserver{filePath: filePath}
 }
 
+// Notify записывает переданное событие аудита в файл в формате JSON,
+// разделяя записи символом новой строки.
 func (f *fileObserver) Notify(event model.Event) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

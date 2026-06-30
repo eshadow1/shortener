@@ -1,3 +1,6 @@
+// Package handler предоставляет HTTP-хендлеры для обработки запросов аутентификации,
+// таких как регистрация и вход пользователей. Пакет инкапсулирует работу с HTTP-протоколом
+// и делегирует бизнес-логику интерфейсу AuthService.
 package handler
 
 import (
@@ -9,6 +12,7 @@ import (
 	"github.com/eshadow1/shortener/internal/service"
 )
 
+// AuthMiddleware создает middleware для проверки JWT-токена и авторизации пользователя.
 func AuthMiddleware(cfg *configs.AuthConfig) func(http.Handler) http.Handler {
 	worker := service.NewJWTWorker(cfg)
 

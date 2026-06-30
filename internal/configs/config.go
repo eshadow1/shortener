@@ -1,3 +1,11 @@
+// Package configs предоставляет функциональность для инициализации и управления
+// конфигурацией приложения. Он поддерживает загрузку параметров через флаги
+// командной строки и переменные окружения.
+//
+// Приоритет значений при инициализации:
+// 1. Переменные окружения
+// 2. Флаги командной строки
+// 3. Значения по умолчанию (константы пакета)
 package configs
 
 import (
@@ -8,56 +16,90 @@ import (
 )
 
 const (
-	DefaultEmptySting          = ""
-	DefaultAddr                = "localhost:8080"
-	DefaultBaseURL             = "http://localhost:8080"
-	DefaultLevelLog            = "info"
-	DefaultMigrationPath       = "./migrations"
-	DefaultBufferSizeChan      = 100
-	DefaultBatchSize           = 10
+	// DefaultEmptyString -  пустая строка
+	DefaultEmptyString = ""
+	// DefaultAddr — адрес HTTP-сервера приложения по умолчанию.
+	DefaultAddr = "localhost:8080"
+	// DefaultBaseURL — адрес дописываемый по умолчанию.
+	DefaultBaseURL = "http://localhost:8080"
+	// DefaultLevelLog — уровень логирования по умолчанию.
+	DefaultLevelLog = "info"
+	// DefaultMigrationPath — путь к директории с миграциями базы данных по умолчанию.
+	DefaultMigrationPath = "./migrations"
+	// DefaultBufferSizeChan — размер буфера по умолчанию.
+	DefaultBufferSizeChan = 100
+	// DefaultBatchSize — размер батча по умолчанию.
+	DefaultBatchSize = 10
+	// DefaultFlushIntervalSecond — таймаут записи по умолчанию.
 	DefaultFlushIntervalSecond = 15 * time.Second
 )
 
+// StorageConfig описывает конфигурацию для работы с хранилищем данных
 type StorageConfig struct {
-	Path           string
-	PathDB         string
+	// Path — путь для подключения к файловой базе
+	Path string
+	// PathDB — URI для подключения к базе данных
+	PathDB string
+	// PathMigrations — путь к файлам миграций базы данных.
 	PathMigrations string
 }
 
+// LogConfig описывает конфигурацию подсистемы логирования.
 type LogConfig struct {
+	// Level — уровень детализации логов (например, info, debug, error).
 	Level string
 }
 
+// AuthConfig описывает конфигурацию для модуля аутентификации и работы с токенами.
 type AuthConfig struct {
-	JWTSecret   []byte
+	// JWTSecret — секретный ключ для подписи и проверки JWT-токенов.
+	JWTSecret []byte
+	// TokenIssuer — название издателя (issuer), указываемого в JWT-токенах.
 	TokenIssuer string
 }
 
+// ServiceConfig описывает конфигурацию подсистемы сервиса.
 type ServiceConfig struct {
+	// BufferSizeChan содержит настройки сервиса сокращения ссылок.
 	BufferSizeChan int
-	BatchSize      int
-	FlushInterval  time.Duration
+	// BatchSize - размер одного батча.
+	BatchSize int
+	// FlushInterval - периодичность очистки очереди.
+	FlushInterval time.Duration
 }
 
+// AuditConfig описывает конфигурацию для модуля аудита.
 type AuditConfig struct {
+	// File - путь до файла аудита
 	File string
-	URL  string
+	// URL - адрес удаленного сервиса аудита
+	URL string
 }
 
+// Config является главной структурой конфигурации приложения
 type Config struct {
-	Addr    string
+	// Addr — сетевой адрес (хост:порт), на котором запускается HTTP-сервер приложения.
+	Addr string
+	// BaseURL — сетевой адрес, который дописывается.
 	BaseURL string
-	Log     LogConfig
+	// Log содержит настройки логирования.
+	Log LogConfig
+	// Storage содержит настройки подключения к хранилищу данных.
 	Storage StorageConfig
-	Auth    AuthConfig
+	// Auth содержит настройки аутентификации.
+	Auth AuthConfig
+	// Service содержит настройки сервиса сокращения ссылок.
 	Service ServiceConfig
-	Audit   AuditConfig
+	// Audit содержит настройки аудита.
+	Audit AuditConfig
 }
 
+// NewConfig создает и возвращает указатель на новый экземпляр структуры Config.
 func NewConfig() *Config {
 	return &Config{}
 }
 
+// Init инициализирует конфигурацию.
 func (c *Config) Init() {
 	c.parseWithFlag()
 
@@ -112,11 +154,11 @@ func (c *Config) parseWithFlag() {
 	flag.StringVar(&c.Addr, "a", DefaultAddr, "host:port")
 	flag.StringVar(&c.BaseURL, "b", DefaultBaseURL, "base url")
 	flag.StringVar(&c.Log.Level, "l", DefaultLevelLog, "level log")
-	flag.StringVar(&c.Storage.Path, "f", DefaultEmptySting, "file storage path")
-	flag.StringVar(&c.Storage.PathDB, "d", DefaultEmptySting, "file storage path")
+	flag.StringVar(&c.Storage.Path, "f", DefaultEmptyString, "file storage path")
+	flag.StringVar(&c.Storage.PathDB, "d", DefaultEmptyString, "file storage path")
 	flag.StringVar(&c.Storage.PathMigrations, "m", DefaultMigrationPath, "migrations path")
-	flag.StringVar(&c.Audit.URL, "audit-url", DefaultEmptySting, "path to audit log file")
-	flag.StringVar(&c.Audit.File, "audit-file", DefaultEmptySting, "remote audit server URL")
+	flag.StringVar(&c.Audit.URL, "audit-url", DefaultEmptyString, "path to audit log file")
+	flag.StringVar(&c.Audit.File, "audit-file", DefaultEmptyString, "remote audit server URL")
 
 	flag.Parse()
 }

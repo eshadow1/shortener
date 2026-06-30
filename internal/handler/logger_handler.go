@@ -8,6 +8,7 @@ import (
 	"github.com/eshadow1/shortener/internal/loggers"
 )
 
+// LoggerMiddleware создает middleware для логирования всех HTTP-запросов.
 func LoggerMiddleware() func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

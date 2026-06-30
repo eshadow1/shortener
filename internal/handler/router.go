@@ -23,6 +23,7 @@ type RouterHandler interface {
 	DeleteUserURLs(w http.ResponseWriter, r *http.Request)
 }
 
+// InitRouter инициализирует и настраивает HTTP-маршрутизатор (chi.Mux) для приложения.
 func InitRouter(cfg *configs.Config, h RouterHandler, a AuditBroker) *chi.Mux {
 	audit := AuditMiddleware(a)
 
