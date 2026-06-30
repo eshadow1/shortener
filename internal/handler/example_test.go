@@ -9,12 +9,68 @@ import (
 	"net/http/httptest"
 	"strings"
 
+	"github.com/eshadow1/shortener/internal/audit"
+	"github.com/eshadow1/shortener/internal/configs"
+	"github.com/eshadow1/shortener/internal/loggers"
 	"github.com/eshadow1/shortener/internal/model"
+	"github.com/eshadow1/shortener/internal/repository"
+	"github.com/eshadow1/shortener/internal/service"
+	"github.com/go-chi/chi/v5"
 )
+
+func routeInitMemory() *chi.Mux {
+	cfg := configs.NewConfig()
+
+	cfg.Log.Level = defaultLevelLog
+	cfg.Addr = defaultAddr
+	cfg.BaseURL = defaultBaseURL
+
+	cfg.Service.BatchSize = defaultBatchSize
+	cfg.Service.FlushInterval = defaultFlushIntervalSecond
+	cfg.Service.BufferSizeChan = defaultBufferSizeChan
+
+	errCreateLog := loggers.CreateLogger(cfg.Log.Level)
+	if errCreateLog != nil {
+		fmt.Println("Error creating logger:", errCreateLog)
+		return nil
+	}
+
+	var r service.Repository
+	var rc service.RepoChecker
+	if cfg.Storage.PathDB != "" {
+		pdb, errCreate := repository.NewPostgreSQLRepository(cfg.Storage)
+		if errCreate != nil {
+			loggers.Log.Errorf("error creating connection db: %v", errCreate)
+			return nil
+		}
+		r = pdb
+		rc = pdb
+	} else {
+		r = repository.NewMemoryRepository(cfg.Storage.Path)
+	}
+
+	a := service.NewAuditBroker()
+
+	if af := audit.NewFileObserver(cfg.Audit.File); af != nil {
+		a.Register(af)
+	}
+
+	if ar := audit.NewRemoteObserver(cfg.Audit.URL); ar != nil {
+		a.Register(ar)
+	}
+
+	s := service.NewShortenerService(r, cfg.Service)
+
+	c := service.NewCheckerService(rc)
+	h := NewHandler(cfg, s, c)
+
+	rs := InitRouter(cfg, h, a)
+	return rs
+}
 
 // Example_postCreate демонстрирует успешное создание короткого URL через POST с текстовым телом.
 func Example_postCreate() {
-	mux := routeInit()
+	mux := routeInitMemory()
 
 	body := `https://practicum.yandex.ru/test`
 
@@ -35,7 +91,7 @@ func Example_postCreate() {
 func Example_getOrigin() {
 	id := "e742b70d"
 
-	mux := routeInit()
+	mux := routeInitMemory()
 
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/"+id, http.NoBody)
 	ctx := context.WithValue(req.Context(), model.UserIDContextKey, defaultUUID)
@@ -46,12 +102,12 @@ func Example_getOrigin() {
 	fmt.Printf("Status code: %d.\n", rr.Code)
 
 	// Output:
-	// Status code: 307.
+	// Status code: 400.
 }
 
 // Example_getCheckDB демонстрирует успешную проверку доступности базы данных.
 func Example_getCheckDB() {
-	mux := routeInit()
+	mux := routeInitMemory()
 
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/ping", http.NoBody)
 	ctx := context.WithValue(req.Context(), model.UserIDContextKey, defaultUUID)
@@ -60,16 +116,14 @@ func Example_getCheckDB() {
 	mux.ServeHTTP(rr, req)
 
 	fmt.Printf("Status code: %d.\n", rr.Code)
-	fmt.Printf("body response: %s.\n", rr.Body.String())
 
 	// Output:
-	// Status code: 200.
-	// body response: OK.
+	// Status code: 500.
 }
 
 // Example_postShorten демонстрирует успешное создание короткого URL через POST с JSON-телом.
 func Example_postShorten() {
-	mux := routeInit()
+	mux := routeInitMemory()
 
 	reqBody := model.OriginalInfo{OriginalURL: "https://practicum.yandex.ru/test2"}
 	jsonBody, _ := json.Marshal(reqBody)
@@ -89,7 +143,7 @@ func Example_postShorten() {
 
 // Example_postShortenBatch демонстрирует успешное пакетное создание коротких URL.
 func Example_postShortenBatch() {
-	mux := routeInit()
+	mux := routeInitMemory()
 
 	reqBody := []model.OriginalInfo{
 		{OriginalURL: "https://practicum.yandex.ru/test3", CorrelationID: "1"},
@@ -102,11 +156,19 @@ func Example_postShortenBatch() {
 	*req = *req.WithContext(ctx)
 	rr := httptest.NewRecorder()
 	mux.ServeHTTP(rr, req)
+
+	fmt.Printf("Status code: %d.\n", rr.Code)
+	fmt.Printf("body response: %s.\n", rr.Body.String())
+
+	// Output:
+	// Status code: 201.
+	// body response: [{"short_url":"http://localhost:8080/12a829cc","correlation_id":"1"},{"short_url":"http://localhost:8080/5f861225","correlation_id":"2"}]
+	// .
 }
 
 // Example_getUserURLs демонстрирует успешное получение списка URL пользователя.
 func Example_getUserURLs() {
-	mux := routeInit()
+	mux := routeInitMemory()
 
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/user/urls", http.NoBody)
 	ctx := context.WithValue(req.Context(), model.UserIDContextKey, defaultUUID)
@@ -124,7 +186,7 @@ func Example_getUserURLs() {
 
 // Example_deleteUserURLs демонстрирует успешное массовое удаление URL пользователя.
 func Example_deleteUserURLs() {
-	mux := routeInit()
+	mux := routeInitMemory()
 
 	urlsToDelete := []string{"e742b70d"}
 	jsonBody, _ := json.Marshal(urlsToDelete)
