@@ -4,22 +4,26 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"log"
 	"net/http"
 	"time"
 
 	"github.com/eshadow1/shortener/internal/loggers"
 	"github.com/eshadow1/shortener/internal/model"
+
+	"github.com/hashicorp/go-retryablehttp"
 )
 
 const (
-	defaultTimeout = 10 * time.Second
+	defaultTimeout      = 5 * time.Second
+	defaultRetryMax     = 5
+	defaultRetryWaitMin = 200 * time.Millisecond
+	defaultRetryWaitMax = 25 * time.Second
 )
 
 // remoteObserver — наблюдатель, отправляющий события на удалённый сервер
 type remoteObserver struct {
 	url    string
-	client *http.Client
+	client *retryablehttp.Client
 }
 
 // NewRemoteObserver создает и возвращает нового удалённого наблюдателя,
@@ -29,10 +33,21 @@ func NewRemoteObserver(url string) *remoteObserver {
 		loggers.Log.Info("No URL provided")
 		return nil
 	}
+
+	retryClient := retryablehttp.NewClient()
+
+	retryClient.RetryMax = defaultRetryMax
+	retryClient.RetryWaitMin = defaultRetryWaitMin
+	retryClient.RetryWaitMax = defaultRetryWaitMax
+	retryClient.CheckRetry = retryPolicy
+	retryClient.HTTPClient = &http.Client{
+		Timeout: defaultTimeout,
+	}
+
 	loggers.Log.Info("Initializing remote observer", url)
 	return &remoteObserver{
 		url:    url,
-		client: &http.Client{Timeout: defaultTimeout},
+		client: retryClient,
 	}
 }
 
@@ -48,9 +63,9 @@ func (r *remoteObserver) Notify(event model.Event) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, r.url, bytes.NewReader(data))
+	req, err := retryablehttp.NewRequestWithContext(ctx, http.MethodPost, r.url, bytes.NewReader(data))
 	if err != nil {
-		log.Printf("[RemoteObserver] build request: %v", err)
+		loggers.Log.Error("Error create request event", event, "error", err)
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
@@ -65,4 +80,19 @@ func (r *remoteObserver) Notify(event model.Event) {
 	if resp.StatusCode >= http.StatusBadRequest {
 		loggers.Log.Error("Error posting event", event, "status", resp.StatusCode)
 	}
+}
+
+// Close закрывает открытый клиент.
+func (r *remoteObserver) Close() {
+	r.client.HTTPClient.CloseIdleConnections()
+}
+
+func retryPolicy(_ context.Context, resp *http.Response, err error) (bool, error) {
+	if err != nil ||
+		resp.StatusCode == http.StatusTooManyRequests ||
+		resp.StatusCode >= http.StatusInternalServerError {
+		return true, nil
+	}
+
+	return false, nil
 }

@@ -19,6 +19,17 @@ go test -bench=Benchmark -benchmem -memprofile=profiles/result.pprof -run=^$ .\i
 go tool pprof -top -diff_base=profiles/base.pprof profiles/result.pprof
 ```
 
+### Проведенные действия
+
+В `handler` произведены замены:
+   - io.ReadAll + json.Unmarshal на json.NewDecoder().Decode()
+   - json.Marshal + w.Write на json.NewEncoder().Encode()
+   - w.Write([]byte(str)) на io.WriteString(w, str)
+   - strings.TrimSpace(string(b)) на string(bytes.TrimSpace(b))
+
+В  `AuthMiddleware` создается `worker` один раз при инициализации
+
+
 ### Вывод `pprof -diff_base`
 ```
 Type: alloc_space

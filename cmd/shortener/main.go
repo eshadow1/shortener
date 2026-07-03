@@ -62,6 +62,7 @@ func main() {
 	defer r.Close()
 
 	a := service.NewAuditBroker()
+	defer a.Close()
 
 	if af := audit.NewFileObserver(cfg.Audit.File); af != nil {
 		a.Register(af)

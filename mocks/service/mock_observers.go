@@ -36,6 +36,39 @@ func (_m *MockObserver) EXPECT() *MockObserver_Expecter {
 	return &MockObserver_Expecter{mock: &_m.Mock}
 }
 
+// Close provides a mock function for the type MockObserver
+func (_mock *MockObserver) Close() {
+	_mock.Called()
+	return
+}
+
+// MockObserver_Close_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Close'
+type MockObserver_Close_Call struct {
+	*mock.Call
+}
+
+// Close is a helper method to define mock.On call
+func (_e *MockObserver_Expecter) Close() *MockObserver_Close_Call {
+	return &MockObserver_Close_Call{Call: _e.mock.On("Close")}
+}
+
+func (_c *MockObserver_Close_Call) Run(run func()) *MockObserver_Close_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockObserver_Close_Call) Return() *MockObserver_Close_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockObserver_Close_Call) RunAndReturn(run func()) *MockObserver_Close_Call {
+	_c.Run(run)
+	return _c
+}
+
 // Notify provides a mock function for the type MockObserver
 func (_mock *MockObserver) Notify(event model.Event) {
 	_mock.Called(event)

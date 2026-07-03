@@ -6,6 +6,7 @@ import (
 
 	"github.com/eshadow1/shortener/internal/loggers"
 	"github.com/eshadow1/shortener/internal/model"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 type ctxKey struct{}
@@ -40,7 +41,13 @@ type AuditBroker interface {
 func AuditMiddleware(broker AuditBroker) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			next.ServeHTTP(w, r)
+			wrap := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+
+			next.ServeHTTP(wrap, r)
+
+			if wrap.Status() != http.StatusConflict && wrap.Status() >= http.StatusBadRequest {
+				return
+			}
 
 			data := GetAuditData(r)
 			if data == nil {

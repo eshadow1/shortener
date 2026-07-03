@@ -157,8 +157,8 @@ func (c *Config) parseWithFlag() {
 	flag.StringVar(&c.Storage.Path, "f", DefaultEmptyString, "file storage path")
 	flag.StringVar(&c.Storage.PathDB, "d", DefaultEmptyString, "file storage path")
 	flag.StringVar(&c.Storage.PathMigrations, "m", DefaultMigrationPath, "migrations path")
-	flag.StringVar(&c.Audit.URL, "audit-url", DefaultEmptyString, "path to audit log file")
-	flag.StringVar(&c.Audit.File, "audit-file", DefaultEmptyString, "remote audit server URL")
+	flag.StringVar(&c.Audit.URL, "audit-url", DefaultEmptyString, "remote audit server URL")
+	flag.StringVar(&c.Audit.File, "audit-file", DefaultEmptyString, "path to audit log file")
 
 	flag.Parse()
 }

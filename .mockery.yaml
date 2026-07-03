@@ -7,5 +7,5 @@ packages:
       all: true
       recursive: true
       dir: "mocks/{{.SrcPackageName}}"
-      filename: "mock_{{.InterfaceName}}.go"
+      filename: "mock_{{.InterfaceName | snakecase}}.go"
       inpackage: false

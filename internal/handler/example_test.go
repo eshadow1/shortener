@@ -72,9 +72,7 @@ func routeInitMemory() *chi.Mux {
 func Example_postCreate() {
 	mux := routeInitMemory()
 
-	body := `https://practicum.yandex.ru/test`
-
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/", strings.NewReader(body))
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/", strings.NewReader(defaultBody))
 	ctx := context.WithValue(req.Context(), model.UserIDContextKey, defaultUUID)
 	*req = *req.WithContext(ctx)
 	req.Header.Set("Content-Type", "text/plain")
@@ -93,6 +91,13 @@ func Example_getOrigin() {
 
 	mux := routeInitMemory()
 
+	reqInit := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/", strings.NewReader(defaultBody))
+	ctxInit := context.WithValue(reqInit.Context(), model.UserIDContextKey, defaultUUID)
+	*reqInit = *reqInit.WithContext(ctxInit)
+	reqInit.Header.Set("Content-Type", "text/plain")
+	rrInit := httptest.NewRecorder()
+	mux.ServeHTTP(rrInit, reqInit)
+
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/"+id, http.NoBody)
 	ctx := context.WithValue(req.Context(), model.UserIDContextKey, defaultUUID)
 	*req = *req.WithContext(ctx)
@@ -102,10 +107,10 @@ func Example_getOrigin() {
 	fmt.Printf("Status code: %d.\n", rr.Code)
 
 	// Output:
-	// Status code: 400.
+	// Status code: 307.
 }
 
-// Example_getCheckDB демонстрирует успешную проверку доступности базы данных.
+// Example_getCheckDB демонстрирует неудачную проверку доступности базы данных.
 func Example_getCheckDB() {
 	mux := routeInitMemory()
 

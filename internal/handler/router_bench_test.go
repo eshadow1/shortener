@@ -27,6 +27,7 @@ const (
 	defaultBatchSize           = 10
 	defaultFlushIntervalSecond = 15 * time.Second
 	defaultUUID                = "96bd6aa2-6c78-4d02-8dc5-13ff6c5680af"
+	defaultBody                = "https://practicum.yandex.ru/test"
 )
 
 func routeInit() *chi.Mux {
@@ -84,16 +85,19 @@ func routeInit() *chi.Mux {
 func BenchmarkRouter_PostCreate(b *testing.B) {
 	mux := routeInit()
 
-	body := `https://practicum.yandex.ru/test`
-
 	b.ReportAllocs()
-	b.ResetTimer()
-	for range b.N {
-		req := httptest.NewRequestWithContext(b.Context(), http.MethodPost, "/", strings.NewReader(body))
+
+	for b.Loop() {
+		b.StopTimer()
+
+		req := httptest.NewRequestWithContext(b.Context(), http.MethodPost, "/", strings.NewReader(defaultBody))
 		ctx := context.WithValue(req.Context(), model.UserIDContextKey, defaultUUID)
 		*req = *req.WithContext(ctx)
 		req.Header.Set("Content-Type", "text/plain")
 		rr := httptest.NewRecorder()
+
+		b.StartTimer()
+
 		mux.ServeHTTP(rr, req)
 	}
 }
@@ -104,12 +108,17 @@ func BenchmarkRouter_Get(b *testing.B) {
 	mux := routeInit()
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for range b.N {
+
+	for b.Loop() {
+		b.StopTimer()
+
 		req := httptest.NewRequestWithContext(b.Context(), http.MethodGet, "/"+id, http.NoBody)
 		ctx := context.WithValue(req.Context(), model.UserIDContextKey, defaultUUID)
 		*req = *req.WithContext(ctx)
 		rr := httptest.NewRecorder()
+
+		b.StartTimer()
+
 		mux.ServeHTTP(rr, req)
 	}
 }
