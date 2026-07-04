@@ -1,3 +1,4 @@
+// Package main является точкой входа приложения Shortener
 package main
 
 import (
@@ -11,6 +12,7 @@ import (
 
 	"net/http"
 
+	"github.com/eshadow1/shortener/internal/audit"
 	"github.com/eshadow1/shortener/internal/configs"
 	"github.com/eshadow1/shortener/internal/handler"
 	"github.com/eshadow1/shortener/internal/loggers"
@@ -19,12 +21,21 @@ import (
 )
 
 const (
-	defaultReadTimeout     = 15 * time.Second
-	defaultWriteTimeout    = 15 * time.Second
-	defaultIdleTimeout     = 60 * time.Second
+	// defaultReadTimeout — максимальное время чтения всего HTTP-запроса,
+	// включая тело.
+	defaultReadTimeout = 15 * time.Second
+	// defaultWriteTimeout — максимальное время записи HTTP-ответа.
+	defaultWriteTimeout = 15 * time.Second
+	// defaultIdleTimeout — максимальное время простоя keep-alive соединения.
+	defaultIdleTimeout = 60 * time.Second
+	// defaultShutdownTimeout — максимальное время, отводимое на graceful shutdown
+	// сервера и фоновых процессов.
 	defaultShutdownTimeout = 30 * time.Second
 )
 
+// main — точка входа приложения. Выполняет инициализацию всех компонентов,
+// запуск HTTP-сервера и фонового воркера, ожидание сигнала завершения
+// и graceful shutdown.
 func main() {
 	cfg := configs.NewConfig()
 	cfg.Init()
@@ -50,11 +61,23 @@ func main() {
 	}
 	defer r.Close()
 
+	a := service.NewAuditBroker()
+	defer a.Close()
+
+	if af := audit.NewFileObserver(cfg.Audit.File); af != nil {
+		a.Register(af)
+	}
+
+	if ar := audit.NewRemoteObserver(cfg.Audit.URL); ar != nil {
+		a.Register(ar)
+	}
+
 	s := service.NewShortenerService(r, cfg.Service)
 	defer s.Close()
 	c := service.NewCheckerService(rc)
 	h := handler.NewHandler(cfg, s, c)
-	rs := handler.InitRouter(cfg, h)
+
+	rs := handler.InitRouter(cfg, h, a)
 
 	server := &http.Server{
 		Addr:         cfg.Addr,

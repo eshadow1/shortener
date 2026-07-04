@@ -12,6 +12,7 @@ import (
 	"github.com/eshadow1/shortener/internal/model"
 )
 
+// ErrShortNotFound возвращается, когда запрошенный короткий URL отсутствует в хранилище или был помечен как удалённый.
 var ErrShortNotFound = errors.New("short not found")
 
 type memoryRepository struct {
@@ -20,6 +21,8 @@ type memoryRepository struct {
 	mu          sync.RWMutex
 }
 
+// NewMemoryRepository создает и возвращает новое in-memory хранилище,
+// инициализируя его данными, загруженными из файла по указанному пути.
 func NewMemoryRepository(storagePath string) *memoryRepository {
 	return &memoryRepository{
 		matchPairs:  loadData(storagePath),
@@ -28,6 +31,7 @@ func NewMemoryRepository(storagePath string) *memoryRepository {
 	}
 }
 
+// Save сохраняет переданный список URL-пар в хранилище
 func (m *memoryRepository) Save(ctx context.Context, values []model.URLInfo) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -44,6 +48,7 @@ func (m *memoryRepository) Save(ctx context.Context, values []model.URLInfo) err
 	return nil
 }
 
+// Get ищет оригинальный URL по его короткому варианту.
 func (m *memoryRepository) Get(_ context.Context, short string) (model.UserURL, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -62,6 +67,8 @@ func (m *memoryRepository) Get(_ context.Context, short string) (model.UserURL, 
 	return model.UserURL{}, ErrShortNotFound
 }
 
+// GetUserURLs возвращает список всех URL-пар, принадлежащих пользователю,
+// идентификатор которого извлекается из контекста.
 func (m *memoryRepository) GetUserURLs(ctx context.Context) ([]model.UserURL, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -81,6 +88,7 @@ func (m *memoryRepository) GetUserURLs(ctx context.Context) ([]model.UserURL, er
 	return urls, nil
 }
 
+// DeleteUserURLs помечает указанные короткие URL как удалённые  для заданного пользователя.
 func (m *memoryRepository) DeleteUserURLs(_ context.Context, userID string, urls []string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -100,10 +108,12 @@ func (m *memoryRepository) DeleteUserURLs(_ context.Context, userID string, urls
 	return nil
 }
 
+// Close выполняет сохранение текущего состояния хранилища в файл перед завершением работы.
 func (m *memoryRepository) Close() {
 	saveData(m.storagePath, m.matchPairs)
 }
 
+// saveData сериализует содержимое хранилища в JSON и записывает его в файл по указанному пути.
 func saveData(storagePath string, data map[string]map[string]model.MemoryStorage) {
 	if len(data) == 0 {
 		return
@@ -145,6 +155,7 @@ func saveData(storagePath string, data map[string]map[string]model.MemoryStorage
 	}
 }
 
+// loadData читает и десериализует данные хранилища из JSON-файла по указанному пути.
 func loadData(storagePath string) map[string]map[string]model.MemoryStorage {
 	matchPairs := make(map[string]map[string]model.MemoryStorage)
 	if storagePath == "" {

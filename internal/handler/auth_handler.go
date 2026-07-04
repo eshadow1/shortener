@@ -1,3 +1,6 @@
+// Package handler предоставляет HTTP-хендлеры для обработки сервиса сокращения ссылок, логирование запросов,
+// аудит успешных вызовов, кодирования и запросов аутентификации.
+// Пакет инкапсулирует работу с HTTP-протоколом.
 package handler
 
 import (
@@ -9,11 +12,13 @@ import (
 	"github.com/eshadow1/shortener/internal/service"
 )
 
+// AuthMiddleware создает middleware для проверки JWT-токена и авторизации пользователя.
 func AuthMiddleware(cfg *configs.AuthConfig) func(http.Handler) http.Handler {
+	worker := service.NewJWTWorker(cfg)
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
-			worker := service.NewJWTWorker(cfg)
 			cookie, errCookie := r.Cookie(service.CookieName)
 			if errCookie != nil || cookie.Value == "" {
 				uid, errCreate := worker.CreateNewJWTForUser(w)

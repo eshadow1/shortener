@@ -1,3 +1,4 @@
+// Package service предоставляет реализацию бизнес-логики приложения.
 package service
 
 import (
@@ -12,12 +13,14 @@ import (
 )
 
 const (
-	CookieName   = "auth_token"
+	// CookieName определяет имя HTTP-куки, в которой хранится JWT-токен аутентификации.
+	CookieName = "auth_token"
+	// CookieMaxAge определяет срок жизни JWT-токена и соответствующей куки в секундах (30 дней).
 	CookieMaxAge = 30 * 24 * 60 * 60 // 30 дней
-
 )
 
 var (
+	// ErrInvalidToken возвращается при обнаружении недействительного, просроченного или неправильно подписанного JWT-токена.
 	ErrInvalidToken = errors.New("invalid token")
 )
 
@@ -25,12 +28,14 @@ type jwtWorker struct {
 	cfg *configs.AuthConfig
 }
 
+// NewJWTWorker создает и возвращает новый экземпляр компонента для работы с JWT-токенами.
 func NewJWTWorker(cfg *configs.AuthConfig) *jwtWorker {
 	return &jwtWorker{
 		cfg: cfg,
 	}
 }
 
+// CreateNewJWTForUser генерирует новый идентификатор пользователя, создает для него JWT-токен.
 func (jw *jwtWorker) CreateNewJWTForUser(w http.ResponseWriter) (string, error) {
 	uid := jw.GenerateUserID()
 	token, err := jw.CreateJWT(uid, jw.cfg.JWTSecret)
@@ -41,6 +46,7 @@ func (jw *jwtWorker) CreateNewJWTForUser(w http.ResponseWriter) (string, error) 
 	return uid, nil
 }
 
+// CreateJWT формирует и подписывает новый JWT-токен с утверждениями.
 func (jw *jwtWorker) CreateJWT(userID string, secret []byte) (string, error) {
 	claims := model.UserClaims{
 		UserID: userID,
@@ -55,6 +61,8 @@ func (jw *jwtWorker) CreateJWT(userID string, secret []byte) (string, error) {
 	return token.SignedString(secret)
 }
 
+// ValidateJWT выполняет разбор и проверку подписи JWT-токена,
+// возвращая извлеченные утверждения пользователя в случае успешной валидации.
 func (*jwtWorker) ValidateJWT(tokenString string, secret []byte) (*model.UserClaims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &model.UserClaims{}, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -75,6 +83,7 @@ func (*jwtWorker) ValidateJWT(tokenString string, secret []byte) (*model.UserCla
 	return claims, nil
 }
 
+// SetAuthCookie устанавливает в HTTP-ответ куку с JWT-токеном.
 func (*jwtWorker) SetAuthCookie(w http.ResponseWriter, token string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     CookieName,
@@ -87,6 +96,7 @@ func (*jwtWorker) SetAuthCookie(w http.ResponseWriter, token string) {
 	})
 }
 
+// GenerateUserID генерирует новый уникальный идентификатор пользователя в формате UUID.
 func (*jwtWorker) GenerateUserID() string {
 	return uuid.NewString()
 }

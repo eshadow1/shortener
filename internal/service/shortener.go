@@ -13,6 +13,8 @@ import (
 	"github.com/eshadow1/shortener/internal/model"
 )
 
+// Repository описывает контракт хранилища данных для операций создания,
+// получения и удаления сокращенных URL-адресов.
 type Repository interface {
 	Save(ctx context.Context, values []model.URLInfo) error
 	Get(ctx context.Context, key string) (model.UserURL, error)
@@ -32,10 +34,15 @@ type shortenerService struct {
 }
 
 var (
+	// ErrorDeleteShortURL возвращается при попытке доступа к короткому URL,
+	// который был помечен как удалённый.
 	ErrorDeleteShortURL = errors.New("failed to delete short url")
+	// ErrorAddToDeleteURL возвращается, когда не удается добавить запрос на удаление в очередь.
 	ErrorAddToDeleteURL = errors.New("failed to add query to delete")
 )
 
+// NewShortenerService создает и возвращает новый сервис для работы с сокращением URL,
+// инициализируя фоновый воркер для пакетного удаления.
 func NewShortenerService(repo Repository, cfg configs.ServiceConfig) *shortenerService {
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -54,6 +61,7 @@ func NewShortenerService(repo Repository, cfg configs.ServiceConfig) *shortenerS
 	return s
 }
 
+// batchWorker выполняет фоновую обработку очереди удалений, накапливая запросы в батчи.
 func (s *shortenerService) batchWorker() {
 	defer s.wg.Done()
 
@@ -91,18 +99,21 @@ func (s *shortenerService) batchWorker() {
 	}
 }
 
+// flushBatch выполняет немедленную отправку накопленных UR
 func (dq *shortenerService) flushBatch(userID string, shortURLs []string) {
 	if err := dq.repo.DeleteUserURLs(dq.ctx, userID, shortURLs); err != nil {
 		loggers.Log.Errorf("failed to delete short urls: %v", err)
 	}
 }
 
+// hashToShort генерирует короткое представление URL
 func (*shortenerService) hashToShort(input string) string {
 	hash := sha256.Sum256([]byte(input))
 
 	return hex.EncodeToString(hash[:])[:8]
 }
 
+// CreateShortURL создает короткие URL для переданного списка оригинальных UR
 func (s *shortenerService) CreateShortURL(ctx context.Context, originals []model.OriginalInfo) ([]model.ShortenInfo, error) {
 	shortens := make([]model.ShortenInfo, 0, len(originals))
 	urlsInfo := make([]model.URLInfo, 0, len(originals))
@@ -130,6 +141,7 @@ func (s *shortenerService) CreateShortURL(ctx context.Context, originals []model
 	return shortens, nil
 }
 
+// GetOriginalURL извлекает оригинальный URL по его короткому варианту из репозитория.
 func (s *shortenerService) GetOriginalURL(ctx context.Context, short model.ShortenInfo) (model.OriginalInfo, error) {
 	origin, errGet := s.repo.Get(ctx, short.ShortURL)
 
@@ -144,10 +156,12 @@ func (s *shortenerService) GetOriginalURL(ctx context.Context, short model.Short
 	return model.OriginalInfo{OriginalURL: origin.OriginalURL}, nil
 }
 
+// GetUserURLs возвращает список всех URL-пар, принадлежащих текущему пользователю, из репозитория.
 func (s *shortenerService) GetUserURLs(ctx context.Context) ([]model.UserURL, error) {
 	return s.repo.GetUserURLs(ctx)
 }
 
+// DeleteUserShortURLs добавляет запрос на массовое удаление коротких URL в асинхронную очередь обработки.
 func (s *shortenerService) DeleteUserShortURLs(ctx context.Context, urls []string) error {
 	if len(urls) == 0 {
 		return nil
@@ -162,6 +176,7 @@ func (s *shortenerService) DeleteUserShortURLs(ctx context.Context, urls []strin
 	}
 }
 
+// Close выполняет корректное завершение работы сервиса
 func (s *shortenerService) Close() {
 	s.cancelCtx()
 	close(s.input)
