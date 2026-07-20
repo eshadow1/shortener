@@ -5,13 +5,17 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"hash"
 	"sync"
 	"time"
 
 	"github.com/eshadow1/shortener/internal/configs"
 	"github.com/eshadow1/shortener/internal/loggers"
 	"github.com/eshadow1/shortener/internal/model"
+	"github.com/eshadow1/shortener/internal/pool"
 )
+
+var sha256Pool = pool.NewPool[hash.Hash](sha256.New)
 
 // Repository описывает контракт хранилища данных для операций создания,
 // получения и удаления сокращенных URL-адресов.
@@ -108,9 +112,8 @@ func (dq *shortenerService) flushBatch(userID string, shortURLs []string) {
 
 // hashToShort генерирует короткое представление URL
 func (*shortenerService) hashToShort(input string) string {
-	hash := sha256.Sum256([]byte(input))
-
-	return hex.EncodeToString(hash[:])[:8]
+	data := CalculateHashWithPool(input)
+	return hex.EncodeToString(data[:])[:8]
 }
 
 // CreateShortURL создает короткие URL для переданного списка оригинальных UR
@@ -181,4 +184,17 @@ func (s *shortenerService) Close() {
 	s.cancelCtx()
 	close(s.input)
 	s.wg.Wait()
+}
+
+// CalculateHashWithPool - аналог sha256.Sum256, но с использованием пула
+func CalculateHashWithPool(input string) [32]byte {
+	h := sha256Pool.Get()
+	defer sha256Pool.Put(h)
+
+	h.Write([]byte(input))
+
+	var res [32]byte
+	copy(res[:], h.Sum(nil))
+
+	return res
 }
