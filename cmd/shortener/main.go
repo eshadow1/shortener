@@ -31,12 +31,21 @@ const (
 	// defaultShutdownTimeout — максимальное время, отводимое на graceful shutdown
 	// сервера и фоновых процессов.
 	defaultShutdownTimeout = 30 * time.Second
+	defaultVersionValue    = "N/A"
+)
+
+var (
+	buildVersion string
+	buildDate    string
+	buildCommit  string
 )
 
 // main — точка входа приложения. Выполняет инициализацию всех компонентов,
 // запуск HTTP-сервера и фонового воркера, ожидание сигнала завершения
 // и graceful shutdown.
 func main() {
+	printInfoBuild()
+
 	cfg := configs.NewConfig()
 	cfg.Init()
 
@@ -106,4 +115,19 @@ func main() {
 		loggers.Log.Infof("Server forced to shutdown: %v", err)
 		return
 	}
+}
+
+func printInfoBuild() {
+	if buildVersion == "" {
+		buildVersion = defaultVersionValue
+	}
+	if buildDate == "" {
+		buildDate = defaultVersionValue
+	}
+	if buildCommit == "" {
+		buildCommit = defaultVersionValue
+	}
+
+	fmt.Printf("Build version: %s\nBuild date: %s\nBuild commit: %s\n",
+		buildVersion, buildDate, buildCommit)
 }
