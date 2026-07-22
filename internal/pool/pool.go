@@ -10,8 +10,8 @@ type Pool[T interface{ Reset() }] struct {
 	creator func() T
 }
 
-// NewPool — конструктор, создающая и возвращающая указатель на новый Pool.
-func NewPool[T interface{ Reset() }](creator func() T) *Pool[T] {
+// New — конструктор, создающая и возвращающая указатель на новый Pool.
+func New[T interface{ Reset() }](creator func() T) *Pool[T] {
 	return &Pool[T]{
 		creator: creator,
 	}
@@ -22,7 +22,11 @@ func NewPool[T interface{ Reset() }](creator func() T) *Pool[T] {
 func (p *Pool[T]) Get() T {
 	v := p.p.Get()
 	if v == nil {
-		return p.creator()
+		if p.creator != nil {
+			return p.creator()
+		}
+		var zero T
+		return zero
 	}
 	return v.(T)
 }

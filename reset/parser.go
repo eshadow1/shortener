@@ -30,17 +30,13 @@ func ProcessFile(path string) ([]ParsedStruct, string, error) {
 			continue
 		}
 
-		hasComment := hasGenerateResetComment(genDecl.Doc)
-
 		for _, spec := range genDecl.Specs {
 			typeSpec, okSpec := spec.(*ast.TypeSpec)
 			if !okSpec {
 				continue
 			}
 
-			if !hasComment {
-				hasComment = hasGenerateResetComment(typeSpec.Comment)
-			}
+			hasComment := hasGenerateResetComment(typeSpec.Comment)
 
 			if !hasComment {
 				continue

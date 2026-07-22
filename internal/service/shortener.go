@@ -15,7 +15,7 @@ import (
 	"github.com/eshadow1/shortener/internal/pool"
 )
 
-var sha256Pool = pool.NewPool[hash.Hash](sha256.New)
+var sha256Pool = pool.New[hash.Hash](sha256.New)
 
 // Repository описывает контракт хранилища данных для операций создания,
 // получения и удаления сокращенных URL-адресов.

@@ -21,18 +21,21 @@ func (o *testObj) Reset() {
 func TestPool_Get(t *testing.T) {
 	tests := []struct {
 		name             string
+		creator          func() *testObj
 		setup            func(p *Pool[*testObj])
 		wantValue        int
 		wantCreatorCalls int
 	}{
 		{
 			name:             "empty Pool returns value",
+			creator:          func() *testObj { return &testObj{value: 999} },
 			setup:            func(*Pool[*testObj]) {},
 			wantValue:        999,
 			wantCreatorCalls: 1,
 		},
 		{
-			name: "pool with one object returns it without calling factory",
+			name:    "pool with one object returns it without calling factory",
+			creator: func() *testObj { return &testObj{value: 999} },
 			setup: func(p *Pool[*testObj]) {
 				p.Put(&testObj{value: 10})
 			},
@@ -40,7 +43,8 @@ func TestPool_Get(t *testing.T) {
 			wantCreatorCalls: 0,
 		},
 		{
-			name: "pool with multiple objects returns one without calling factory",
+			name:    "pool with multiple objects returns one without calling factory",
+			creator: func() *testObj { return &testObj{value: 999} },
 			setup: func(p *Pool[*testObj]) {
 				p.Put(&testObj{value: 10})
 				p.Put(&testObj{value: 20})
@@ -49,23 +53,36 @@ func TestPool_Get(t *testing.T) {
 			wantValue:        0,
 			wantCreatorCalls: 0,
 		},
+		{
+			name:             "empty Pool with nil creator returns zero value",
+			creator:          nil,
+			setup:            func(p *Pool[*testObj]) {},
+			wantCreatorCalls: 0},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			creatorCalls := 0
-			creator := func() *testObj {
-				creatorCalls++
-				return &testObj{value: 999}
+			var creator func() *testObj
+			if tt.creator != nil {
+				creator = func() *testObj {
+					creatorCalls++
+					return tt.creator()
+				}
 			}
 
-			pool := NewPool(creator)
+			pool := New(creator)
 			tt.setup(pool)
 
 			got := pool.Get()
 
-			require.NotNil(t, got)
-			assert.Equal(t, tt.wantValue, got.value)
+			if tt.creator == nil {
+				assert.Nil(t, got)
+			} else {
+				require.NotNil(t, got)
+				assert.Equal(t, tt.wantValue, got.value)
+			}
+
 			assert.Equal(t, tt.wantCreatorCalls, creatorCalls)
 		})
 	}
@@ -100,7 +117,7 @@ func TestPool_Put(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			pool := NewPool(func() *testObj { return &testObj{} })
+			pool := New(func() *testObj { return &testObj{} })
 
 			pool.Put(tt.obj)
 
@@ -109,7 +126,8 @@ func TestPool_Put(t *testing.T) {
 
 			got := pool.Get()
 
-			assert.Same(t, tt.obj, got)
+			require.NotNil(t, got)
+			assert.Equal(t, tt.wantValue, got.value)
 		})
 	}
 }

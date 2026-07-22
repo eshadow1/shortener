@@ -11,17 +11,21 @@ import (
 )
 
 const (
-	permFile = 0600
+	permFile = 0644
 )
 
 func main() {
 	pkgMethods := make(map[string][]string)
 	pkgNames := make(map[string]string)
 
-	wd, _ := os.Getwd()
+	wd, errGet := os.Getwd()
+	if errGet != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", errGet)
+		os.Exit(1)
+	}
 	utilityDir := filepath.Join(wd, "cmd", "reset")
 
-	err := filepath.WalkDir(".", func(path string, d os.DirEntry, err error) error {
+	errWalkDir := filepath.WalkDir(".", func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -39,8 +43,9 @@ func main() {
 			return nil
 		}
 
-		structs, pkgName, err := reset.ProcessFile(path)
-		if err != nil {
+		structs, pkgName, errProcessFile := reset.ProcessFile(path)
+		if errProcessFile != nil {
+			fmt.Fprintf(os.Stderr, "Ошибка парсинга файла: %v\n", errProcessFile)
 			return nil
 		}
 
@@ -55,8 +60,8 @@ func main() {
 		return nil
 	})
 
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Ошибка обхода директорий: %v\n", err)
+	if errWalkDir != nil {
+		fmt.Fprintf(os.Stderr, "Ошибка обхода директорий: %v\n", errWalkDir)
 		os.Exit(1)
 	}
 
