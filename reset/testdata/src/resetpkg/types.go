@@ -1,0 +1,12 @@
+// Package resetpkg — тестовый пакет для проверки reset.
+package resetpkg
+
+// generate:reset
+type ResetableStruct struct {
+	I     int
+	Str   string
+	StrP  *string
+	S     []int
+	M     map[string]string
+	Child *ResetableStruct
+}
