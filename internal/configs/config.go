@@ -9,7 +9,9 @@
 package configs
 
 import (
+	"encoding/json"
 	"flag"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -79,6 +81,28 @@ type AuditConfig struct {
 	URL string
 }
 
+// ConfigJSON является главной структурой конфигурации приложения
+type ConfigJSON struct {
+	// Addr — сетевой адрес (хост:порт), на котором запускается HTTP-сервер приложения.
+	Addr string `json:"server_address"`
+	// BaseURL — сетевой адрес, который дописывается.
+	BaseURL string `json:"base_url"`
+	// EnableHTTPS - переменная, отвечающая за включение HTTPS
+	EnableHTTPS bool `json:"enable_https"`
+	// LogLevel — уровень детализации логов (например, info, debug, error).
+	LogLevel string `json:"log_level"`
+	// StorageFilePath — путь для подключения к файловой базе
+	StorageFilePath string `json:"file_storage_path"`
+	// StoragePathDB — URI для подключения к базе данных
+	StoragePathDB string `json:"database_dsn"`
+	// StoragePathMigrations — путь к файлам миграций базы данных.
+	StoragePathMigrations string `json:"migrations_path"`
+	// AuditURL - адрес удаленного сервиса аудита
+	AuditURL string `json:"audit_url"`
+	// AuditFile - путь до файла аудита
+	AuditFile string `json:"audit_file"`
+}
+
 // Config является главной структурой конфигурации приложения
 type Config struct {
 	// Addr — сетевой адрес (хост:порт), на котором запускается HTTP-сервер приложения.
@@ -106,7 +130,10 @@ func NewConfig() *Config {
 
 // Init инициализирует конфигурацию.
 func (c *Config) Init() {
-	c.parseWithFlag()
+	configFile := c.getConfigPath()
+	cfg := c.parseWithJSON(configFile)
+
+	c.parseWithFlag(cfg)
 
 	c.Addr = c.updateEnv("SERVER_ADDRESS", c.Addr)
 	c.BaseURL = c.updateEnv("BASE_URL", c.BaseURL)
@@ -162,16 +189,38 @@ func (c *Config) Init() {
 	}
 }
 
-func (c *Config) parseWithFlag() {
-	flag.StringVar(&c.Addr, "a", DefaultAddr, "host:port")
-	flag.StringVar(&c.BaseURL, "b", DefaultBaseURL, "base url")
-	flag.BoolVar(&c.EnableHTTPS, "s", DefaultEnableHTTPS, "enable HTTPS")
-	flag.StringVar(&c.Log.Level, "l", DefaultLevelLog, "level log")
-	flag.StringVar(&c.Storage.Path, "f", DefaultEmptyString, "file storage path")
-	flag.StringVar(&c.Storage.PathDB, "d", DefaultEmptyString, "file storage path")
-	flag.StringVar(&c.Storage.PathMigrations, "m", DefaultMigrationPath, "migrations path")
-	flag.StringVar(&c.Audit.URL, "audit-url", DefaultEmptyString, "remote audit server URL")
-	flag.StringVar(&c.Audit.File, "audit-file", DefaultEmptyString, "path to audit log file")
+func (*Config) getConfigPath() string {
+	if path, ok := os.LookupEnv("CONFIG"); ok {
+		return path
+	}
+
+	for i := 1; i < len(os.Args); i++ {
+		arg := os.Args[i]
+
+		if strings.HasPrefix(arg, "-c=") {
+			return strings.TrimPrefix(arg, "-c=")
+		} else if strings.HasPrefix(arg, "-config=") {
+			return strings.TrimPrefix(arg, "-config=")
+		} else if arg == "-c" || arg == "-config" {
+			if i+1 < len(os.Args) && !strings.HasPrefix(os.Args[i+1], "-") {
+				return os.Args[i+1]
+			}
+		}
+	}
+
+	return DefaultEmptyString
+}
+
+func (c *Config) parseWithFlag(cfg *ConfigJSON) {
+	flag.StringVar(&c.Addr, "a", cfg.Addr, "host:port")
+	flag.StringVar(&c.BaseURL, "b", cfg.BaseURL, "base url")
+	flag.BoolVar(&c.EnableHTTPS, "s", cfg.EnableHTTPS, "enable HTTPS")
+	flag.StringVar(&c.Log.Level, "l", cfg.LogLevel, "level log")
+	flag.StringVar(&c.Storage.Path, "f", cfg.StorageFilePath, "file storage path")
+	flag.StringVar(&c.Storage.PathDB, "d", cfg.StoragePathDB, "file storage path")
+	flag.StringVar(&c.Storage.PathMigrations, "m", cfg.StoragePathMigrations, "migrations path")
+	flag.StringVar(&c.Audit.URL, "audit-url", cfg.AuditURL, "remote audit server URL")
+	flag.StringVar(&c.Audit.File, "audit-file", cfg.AuditFile, "path to audit log file")
 
 	flag.Parse()
 }
@@ -181,4 +230,34 @@ func (*Config) updateEnv(name, defaultValue string) string {
 		return value
 	}
 	return defaultValue
+}
+
+func (*Config) parseWithJSON(path string) *ConfigJSON {
+	cfg := &ConfigJSON{
+		Addr:                  DefaultAddr,
+		BaseURL:               DefaultBaseURL,
+		EnableHTTPS:           DefaultEnableHTTPS,
+		LogLevel:              DefaultLevelLog,
+		StorageFilePath:       DefaultEmptyString,
+		StoragePathDB:         DefaultEmptyString,
+		StoragePathMigrations: DefaultMigrationPath,
+		AuditFile:             DefaultEmptyString,
+		AuditURL:              DefaultEmptyString,
+	}
+	if path == "" {
+		return cfg
+	}
+
+	file, errOpen := os.Open(path)
+	if errOpen != nil {
+		fmt.Printf("failed to open json file: %s\n", errOpen)
+		return cfg
+	}
+
+	if errUnmarshal := json.NewDecoder(file).Decode(&cfg); errUnmarshal != nil {
+		fmt.Printf("failed to parse json file: %s\n", errUnmarshal)
+		return cfg
+	}
+
+	return cfg
 }
