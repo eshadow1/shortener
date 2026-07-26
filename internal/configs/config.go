@@ -12,6 +12,7 @@ import (
 	"flag"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -22,6 +23,8 @@ const (
 	DefaultAddr = "localhost:8080"
 	// DefaultBaseURL — адрес дописываемый по умолчанию.
 	DefaultBaseURL = "http://localhost:8080"
+	// DefaultEnableHTTPS — отключение HTTPS по умолчанию.
+	DefaultEnableHTTPS = false
 	// DefaultLevelLog — уровень логирования по умолчанию.
 	DefaultLevelLog = "info"
 	// DefaultMigrationPath — путь к директории с миграциями базы данных по умолчанию.
@@ -82,6 +85,8 @@ type Config struct {
 	Addr string
 	// BaseURL — сетевой адрес, который дописывается.
 	BaseURL string
+	// EnableHTTPS - переменная, отвечающая за включение HTTPS
+	EnableHTTPS bool
 	// Log содержит настройки логирования.
 	Log LogConfig
 	// Storage содержит настройки подключения к хранилищу данных.
@@ -105,6 +110,13 @@ func (c *Config) Init() {
 
 	c.Addr = c.updateEnv("SERVER_ADDRESS", c.Addr)
 	c.BaseURL = c.updateEnv("BASE_URL", c.BaseURL)
+
+	switch strings.ToLower(os.Getenv("ENABLE_HTTPS")) {
+	case "true", "1", "yes", "y":
+		c.EnableHTTPS = true
+	default:
+		c.EnableHTTPS = false
+	}
 
 	c.Log.Level = c.updateEnv("LOG_LEVEL", c.Log.Level)
 
@@ -153,6 +165,7 @@ func (c *Config) Init() {
 func (c *Config) parseWithFlag() {
 	flag.StringVar(&c.Addr, "a", DefaultAddr, "host:port")
 	flag.StringVar(&c.BaseURL, "b", DefaultBaseURL, "base url")
+	flag.BoolVar(&c.EnableHTTPS, "s", DefaultEnableHTTPS, "enable HTTPS")
 	flag.StringVar(&c.Log.Level, "l", DefaultLevelLog, "level log")
 	flag.StringVar(&c.Storage.Path, "f", DefaultEmptyString, "file storage path")
 	flag.StringVar(&c.Storage.PathDB, "d", DefaultEmptyString, "file storage path")
