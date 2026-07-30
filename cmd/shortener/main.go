@@ -33,10 +33,6 @@ const (
 	defaultShutdownTimeout = 30 * time.Second
 	// defaultVersionValue - дефолтное значение для формирования информации о версии
 	defaultVersionValue = "N/A"
-	// defaultTLSCertFile - дефолтный сертификат для HTTPS
-	defaultTLSCertFile = "cert/cert.pem"
-	// defaultTLSKeyFile  - дефолтный ключ для HTTPS
-	defaultTLSKeyFile = "cert/key.pem"
 )
 
 var (
@@ -106,9 +102,10 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	go func() {
-		if cfg.EnableHTTPS {
-			loggers.Log.Infof("Starting HTTPS server on %s (cert: %s, key: %s)", cfg.Addr, defaultTLSCertFile, defaultTLSKeyFile)
-			if errTLS := server.ListenAndServeTLS(defaultTLSCertFile, defaultTLSKeyFile); errTLS != nil && !errors.Is(errTLS, http.ErrServerClosed) {
+		if cfg.HTTPS.EnableHTTPS {
+			loggers.Log.Infof("Starting HTTPS server on %s (cert: %s, key: %s)", cfg.Addr, cfg.HTTPS.TLSCertFile, cfg.HTTPS.TLSKeyFile)
+			errTLS := server.ListenAndServeTLS(cfg.HTTPS.TLSCertFile, cfg.HTTPS.TLSKeyFile)
+			if errTLS != nil && !errors.Is(errTLS, http.ErrServerClosed) {
 				loggers.Log.Fatalf("HTTPS server failed: %v", errTLS)
 			}
 		} else {

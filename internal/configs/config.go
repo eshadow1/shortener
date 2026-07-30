@@ -37,6 +37,10 @@ const (
 	DefaultBatchSize = 10
 	// DefaultFlushIntervalSecond — таймаут записи по умолчанию.
 	DefaultFlushIntervalSecond = 15 * time.Second
+	// DefaultTLSCertFile - дефолтный сертификат для HTTPS
+	DefaultTLSCertFile = "cert/cert.pem"
+	// DefaultTLSKeyFile  - дефолтный ключ для HTTPS
+	DefaultTLSKeyFile = "cert/key.pem"
 )
 
 // StorageConfig описывает конфигурацию для работы с хранилищем данных
@@ -81,6 +85,16 @@ type AuditConfig struct {
 	URL string
 }
 
+// HTTPSConfig описывает конфигурацию для HTTPS.
+type HTTPSConfig struct {
+	// EnableHTTPS - переменная, отвечающая за включение HTTPS
+	EnableHTTPS bool
+	// TLSCertFile - сертификат для HTTPS
+	TLSCertFile string
+	// TLSKeyFile  - ключ для HTTPS
+	TLSKeyFile string
+}
+
 // ConfigJSON является главной структурой конфигурации приложения
 type ConfigJSON struct {
 	// Addr — сетевой адрес (хост:порт), на котором запускается HTTP-сервер приложения.
@@ -109,8 +123,8 @@ type Config struct {
 	Addr string
 	// BaseURL — сетевой адрес, который дописывается.
 	BaseURL string
-	// EnableHTTPS - переменная, отвечающая за включение HTTPS
-	EnableHTTPS bool
+	// HTTPS содержит настройки HTTPS
+	HTTPS HTTPSConfig
 	// Log содержит настройки логирования.
 	Log LogConfig
 	// Storage содержит настройки подключения к хранилищу данных.
@@ -131,19 +145,24 @@ func NewConfig() *Config {
 // Init инициализирует конфигурацию.
 func (c *Config) Init() {
 	configFile := c.getConfigPath()
-	cfg := c.parseWithJSON(configFile)
+	cfg, errParse := c.parseWithJSON(configFile)
+	if errParse != nil {
+		fmt.Fprintf(os.Stderr, "failed to parse file: %s\n", errParse)
+	}
 
 	c.parseWithFlag(cfg)
 
 	c.Addr = c.updateEnv("SERVER_ADDRESS", c.Addr)
 	c.BaseURL = c.updateEnv("BASE_URL", c.BaseURL)
 
-	switch strings.ToLower(os.Getenv("ENABLE_HTTPS")) {
-	case "true", "1", "yes", "y":
-		c.EnableHTTPS = true
-	default:
-		c.EnableHTTPS = false
+	enableHTTPS, errParseBool := strconv.ParseBool(os.Getenv("ENABLE_HTTPS"))
+	if errParseBool != nil {
+		c.HTTPS.EnableHTTPS = false
+	} else {
+		c.HTTPS.EnableHTTPS = enableHTTPS
 	}
+	c.HTTPS.TLSKeyFile = c.updateEnv("TLS_KEY_FILE", DefaultTLSKeyFile)
+	c.HTTPS.TLSCertFile = c.updateEnv("TLS_CERT_FILE", DefaultTLSCertFile)
 
 	c.Log.Level = c.updateEnv("LOG_LEVEL", c.Log.Level)
 
@@ -214,7 +233,7 @@ func (*Config) getConfigPath() string {
 func (c *Config) parseWithFlag(cfg *ConfigJSON) {
 	flag.StringVar(&c.Addr, "a", cfg.Addr, "host:port")
 	flag.StringVar(&c.BaseURL, "b", cfg.BaseURL, "base url")
-	flag.BoolVar(&c.EnableHTTPS, "s", cfg.EnableHTTPS, "enable HTTPS")
+	flag.BoolVar(&c.HTTPS.EnableHTTPS, "s", cfg.EnableHTTPS, "enable HTTPS")
 	flag.StringVar(&c.Log.Level, "l", cfg.LogLevel, "level log")
 	flag.StringVar(&c.Storage.Path, "f", cfg.StorageFilePath, "file storage path")
 	flag.StringVar(&c.Storage.PathDB, "d", cfg.StoragePathDB, "file storage path")
@@ -232,7 +251,7 @@ func (*Config) updateEnv(name, defaultValue string) string {
 	return defaultValue
 }
 
-func (*Config) parseWithJSON(path string) *ConfigJSON {
+func (*Config) parseWithJSON(path string) (*ConfigJSON, error) {
 	cfg := &ConfigJSON{
 		Addr:                  DefaultAddr,
 		BaseURL:               DefaultBaseURL,
@@ -245,19 +264,18 @@ func (*Config) parseWithJSON(path string) *ConfigJSON {
 		AuditURL:              DefaultEmptyString,
 	}
 	if path == "" {
-		return cfg
+		return cfg, nil
 	}
 
 	file, errOpen := os.Open(path)
 	if errOpen != nil {
-		fmt.Printf("failed to open json file: %s\n", errOpen)
-		return cfg
+		return cfg, fmt.Errorf("failed to open json file: %w", errOpen)
 	}
+	defer file.Close()
 
 	if errUnmarshal := json.NewDecoder(file).Decode(&cfg); errUnmarshal != nil {
-		fmt.Printf("failed to parse json file: %s\n", errUnmarshal)
-		return cfg
+		return cfg, fmt.Errorf("failed to parse json file: %w", errUnmarshal)
 	}
 
-	return cfg
+	return cfg, nil
 }
