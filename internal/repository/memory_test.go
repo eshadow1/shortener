@@ -3,8 +3,10 @@ package repository
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"testing"
 
+	"github.com/eshadow1/shortener/internal/loggers"
 	"github.com/eshadow1/shortener/internal/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -128,4 +130,27 @@ func TestMemoryRepository_DeleteUserURLs(t *testing.T) {
 			require.NoError(t, errGet)
 		})
 	}
+}
+
+func TestMemoryRepository_SaveUserURLs(t *testing.T) {
+	errLog := loggers.CreateLogger("error")
+	require.NoError(t, errLog)
+
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "data.txt")
+	memBeforeSave := NewMemoryRepository(filePath)
+	ctx := context.WithValue(t.Context(), model.UserIDContextKey, defaultUUID)
+
+	errSave := memBeforeSave.Save(ctx, []model.URLInfo{{ShortURL: defaultShort, OriginalURL: defaultOriginal}})
+	require.NoError(t, errSave)
+
+	memBeforeSave.Close()
+
+	memAfterSave := NewMemoryRepository(filePath)
+	origin, errGet := memAfterSave.Get(ctx, defaultShort)
+	require.NoError(t, errGet)
+	assert.Equal(t, defaultShort, origin.ShortURL)
+	assert.Equal(t, defaultOriginal, origin.OriginalURL)
+
+	memAfterSave.Close()
 }

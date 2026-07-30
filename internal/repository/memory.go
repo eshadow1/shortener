@@ -180,6 +180,9 @@ func loadData(storagePath string) map[string]map[string]model.MemoryStorage {
 	}
 
 	for _, s := range temp {
+		if _, ok := matchPairs[s.UserID]; !ok {
+			matchPairs[s.UserID] = make(map[string]model.MemoryStorage)
+		}
 		matchPairs[s.UserID][s.Short] = model.MemoryStorage{Original: s.Original, IsDelete: s.IsDelete}
 	}
 	return matchPairs

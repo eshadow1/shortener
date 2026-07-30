@@ -56,7 +56,7 @@ func TestPool_Get(t *testing.T) {
 		{
 			name:             "empty Pool with nil creator returns zero value",
 			creator:          nil,
-			setup:            func(p *Pool[*testObj]) {},
+			setup:            func(*Pool[*testObj]) {},
 			wantCreatorCalls: 0},
 	}
 

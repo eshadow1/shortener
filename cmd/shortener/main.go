@@ -99,11 +99,20 @@ func main() {
 	}
 
 	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	go func() {
-		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			loggers.Log.Fatalf("Server failed: %v", err)
+		if cfg.HTTPS.EnableHTTPS {
+			loggers.Log.Infof("Starting HTTPS server on %s (cert: %s, key: %s)", cfg.Addr, cfg.HTTPS.TLSCertFile, cfg.HTTPS.TLSKeyFile)
+			errTLS := server.ListenAndServeTLS(cfg.HTTPS.TLSCertFile, cfg.HTTPS.TLSKeyFile)
+			if errTLS != nil && !errors.Is(errTLS, http.ErrServerClosed) {
+				loggers.Log.Fatalf("HTTPS server failed: %v", errTLS)
+			}
+		} else {
+			loggers.Log.Infof("Starting HTTP server on %s", cfg.Addr)
+			if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				loggers.Log.Fatalf("Server failed: %v", err)
+			}
 		}
 	}()
 
