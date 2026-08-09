@@ -140,8 +140,8 @@ func TestMemoryRepository_GetStats(t *testing.T) {
 	stats, errGetStats := m.GetStats(ctx)
 	require.NoError(t, errGetStats)
 
-	assert.Equal(t, stats.Users, 1)
-	assert.Equal(t, stats.URLs, 1)
+	assert.Equal(t, 1, stats.Users)
+	assert.Equal(t, 1, stats.URLs)
 }
 
 func TestMemoryRepository_SaveUserURLs(t *testing.T) {

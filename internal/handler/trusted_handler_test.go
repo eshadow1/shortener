@@ -12,7 +12,7 @@ import (
 func TestTrustedSubnetMiddleware(t *testing.T) {
 	cfg := &configs.Config{}
 
-	mockHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mockHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
 	})
@@ -68,7 +68,7 @@ func TestTrustedSubnetMiddleware(t *testing.T) {
 
 			trustedHandler := middleware(mockHandler)
 
-			req := httptest.NewRequest(http.MethodGet, "/api/internal/stats", nil)
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/internal/stats", http.NoBody)
 			req.Header.Set("X-Real-IP", tc.xRealIP)
 			rr := httptest.NewRecorder()
 
