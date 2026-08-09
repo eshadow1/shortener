@@ -129,6 +129,52 @@ func (_c *MockRouterHandler_GetCheckDB_Call) RunAndReturn(run func(w http.Respon
 	return _c
 }
 
+// GetInternalStats provides a mock function for the type MockRouterHandler
+func (_mock *MockRouterHandler) GetInternalStats(w http.ResponseWriter, r *http.Request) {
+	_mock.Called(w, r)
+	return
+}
+
+// MockRouterHandler_GetInternalStats_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetInternalStats'
+type MockRouterHandler_GetInternalStats_Call struct {
+	*mock.Call
+}
+
+// GetInternalStats is a helper method to define mock.On call
+//   - w http.ResponseWriter
+//   - r *http.Request
+func (_e *MockRouterHandler_Expecter) GetInternalStats(w interface{}, r interface{}) *MockRouterHandler_GetInternalStats_Call {
+	return &MockRouterHandler_GetInternalStats_Call{Call: _e.mock.On("GetInternalStats", w, r)}
+}
+
+func (_c *MockRouterHandler_GetInternalStats_Call) Run(run func(w http.ResponseWriter, r *http.Request)) *MockRouterHandler_GetInternalStats_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 http.ResponseWriter
+		if args[0] != nil {
+			arg0 = args[0].(http.ResponseWriter)
+		}
+		var arg1 *http.Request
+		if args[1] != nil {
+			arg1 = args[1].(*http.Request)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockRouterHandler_GetInternalStats_Call) Return() *MockRouterHandler_GetInternalStats_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockRouterHandler_GetInternalStats_Call) RunAndReturn(run func(w http.ResponseWriter, r *http.Request)) *MockRouterHandler_GetInternalStats_Call {
+	_c.Run(run)
+	return _c
+}
+
 // GetOrigin provides a mock function for the type MockRouterHandler
 func (_mock *MockRouterHandler) GetOrigin(w http.ResponseWriter, r *http.Request) {
 	_mock.Called(w, r)

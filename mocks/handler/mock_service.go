@@ -229,6 +229,66 @@ func (_c *MockService_GetOriginalURL_Call) RunAndReturn(run func(context1 contex
 	return _c
 }
 
+// GetStats provides a mock function for the type MockService
+func (_mock *MockService) GetStats(ctx context.Context) (model.StatsResponse, error) {
+	ret := _mock.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetStats")
+	}
+
+	var r0 model.StatsResponse
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context) (model.StatsResponse, error)); ok {
+		return returnFunc(ctx)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context) model.StatsResponse); ok {
+		r0 = returnFunc(ctx)
+	} else {
+		r0 = ret.Get(0).(model.StatsResponse)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = returnFunc(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockService_GetStats_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetStats'
+type MockService_GetStats_Call struct {
+	*mock.Call
+}
+
+// GetStats is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockService_Expecter) GetStats(ctx interface{}) *MockService_GetStats_Call {
+	return &MockService_GetStats_Call{Call: _e.mock.On("GetStats", ctx)}
+}
+
+func (_c *MockService_GetStats_Call) Run(run func(ctx context.Context)) *MockService_GetStats_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockService_GetStats_Call) Return(statsResponse model.StatsResponse, err error) *MockService_GetStats_Call {
+	_c.Call.Return(statsResponse, err)
+	return _c
+}
+
+func (_c *MockService_GetStats_Call) RunAndReturn(run func(ctx context.Context) (model.StatsResponse, error)) *MockService_GetStats_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetUserURLs provides a mock function for the type MockService
 func (_mock *MockService) GetUserURLs(context1 context.Context) ([]model.UserURL, error) {
 	ret := _mock.Called(context1)

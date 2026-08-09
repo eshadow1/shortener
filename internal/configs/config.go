@@ -115,6 +115,8 @@ type ConfigJSON struct {
 	AuditURL string `json:"audit_url"`
 	// AuditFile - путь до файла аудита
 	AuditFile string `json:"audit_file"`
+	// TrustedSubnet - строковое представление бесклассовой адресации (CIDR)
+	TrustedSubnet string `json:"trusted_subnet"`
 }
 
 // Config является главной структурой конфигурации приложения
@@ -123,6 +125,8 @@ type Config struct {
 	Addr string
 	// BaseURL — сетевой адрес, который дописывается.
 	BaseURL string
+	// TrustedSubnet - строковое представление бесклассовой адресации (CIDR)
+	TrustedSubnet string
 	// HTTPS содержит настройки HTTPS
 	HTTPS HTTPSConfig
 	// Log содержит настройки логирования.
@@ -154,6 +158,7 @@ func (c *Config) Init() {
 
 	c.Addr = c.updateEnv("SERVER_ADDRESS", c.Addr)
 	c.BaseURL = c.updateEnv("BASE_URL", c.BaseURL)
+	c.TrustedSubnet = c.updateEnv("TRUSTED_SUBNET", c.TrustedSubnet)
 
 	enableHTTPS, errParseBool := strconv.ParseBool(os.Getenv("ENABLE_HTTPS"))
 	if errParseBool != nil {
@@ -233,6 +238,7 @@ func (*Config) getConfigPath() string {
 func (c *Config) parseWithFlag(cfg *ConfigJSON) {
 	flag.StringVar(&c.Addr, "a", cfg.Addr, "host:port")
 	flag.StringVar(&c.BaseURL, "b", cfg.BaseURL, "base url")
+	flag.StringVar(&c.TrustedSubnet, "t", cfg.TrustedSubnet, "trusted subnet")
 	flag.BoolVar(&c.HTTPS.EnableHTTPS, "s", cfg.EnableHTTPS, "enable HTTPS")
 	flag.StringVar(&c.Log.Level, "l", cfg.LogLevel, "level log")
 	flag.StringVar(&c.Storage.Path, "f", cfg.StorageFilePath, "file storage path")
@@ -262,6 +268,7 @@ func (*Config) parseWithJSON(path string) (*ConfigJSON, error) {
 		StoragePathMigrations: DefaultMigrationPath,
 		AuditFile:             DefaultEmptyString,
 		AuditURL:              DefaultEmptyString,
+		TrustedSubnet:         DefaultEmptyString,
 	}
 	if path == "" {
 		return cfg, nil

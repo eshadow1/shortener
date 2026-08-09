@@ -23,6 +23,7 @@ type Repository interface {
 	Save(ctx context.Context, values []model.URLInfo) error
 	Get(ctx context.Context, key string) (model.UserURL, error)
 	GetUserURLs(ctx context.Context) ([]model.UserURL, error)
+	GetStats(ctx context.Context) (model.StatsResponse, error)
 	DeleteUserURLs(ctx context.Context, userID string, urls []string) error
 	Close()
 }
@@ -184,6 +185,11 @@ func (s *shortenerService) Close() {
 	s.cancelCtx()
 	close(s.input)
 	s.wg.Wait()
+}
+
+// GetStats возвращает статистику сервиса
+func (s *shortenerService) GetStats(ctx context.Context) (model.StatsResponse, error) {
+	return s.repo.GetStats(ctx)
 }
 
 // CalculateHashWithPool - аналог sha256.Sum256, но с использованием пула

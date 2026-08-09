@@ -554,3 +554,71 @@ func TestHandler_DeleteUserURLs(t *testing.T) {
 		})
 	}
 }
+
+func TestHandler_GetInternalStats(t *testing.T) {
+	cfg := &configs.Config{
+		Addr:    configs.DefaultAddr,
+		BaseURL: configs.DefaultBaseURL,
+	}
+	errLog := loggers.CreateLogger("Error")
+	require.NoError(t, errLog)
+
+	tests := []struct {
+		name           string
+		method         string
+		stats          model.StatsResponse
+		errGetStats    error
+		expectedStats  model.StatsResponse
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:   "success",
+			method: http.MethodGet,
+			stats: model.StatsResponse{
+				URLs:  1,
+				Users: 1,
+			},
+			errGetStats:    nil,
+			expectedStatus: http.StatusOK,
+			expectedBody:   "{\"urls\":1,\"users\":1}\n",
+		},
+		{
+			name:           "bad_method",
+			method:         http.MethodPost,
+			stats:          model.StatsResponse{},
+			errGetStats:    nil,
+			expectedStatus: http.StatusMethodNotAllowed,
+			expectedBody:   http.StatusText(http.StatusMethodNotAllowed) + "\n",
+		},
+		{
+			name:           "internal_server_error",
+			method:         http.MethodGet,
+			stats:          model.StatsResponse{},
+			errGetStats:    errors.New("error"),
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   http.StatusText(http.StatusInternalServerError) + "\n",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			req := httptest.NewRequestWithContext(t.Context(), test.method, "/api/internal/stats", http.NoBody)
+			req.Header.Set("Content-Type", "application/json")
+
+			w := httptest.NewRecorder()
+
+			mc := mockhandler.NewMockChecker(t)
+			ms := mockhandler.NewMockService(t)
+			ms.On("GetStats", t.Context()).Return(test.stats, test.errGetStats).Maybe()
+			h := NewHandler(cfg, ms, mc)
+
+			h.GetInternalStats(w, req)
+
+			body, err := io.ReadAll(w.Body)
+			require.NoError(t, err)
+
+			assert.Equal(t, test.expectedStatus, w.Code)
+			assert.Equal(t, test.expectedBody, string(body))
+		})
+	}
+}

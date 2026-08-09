@@ -17,6 +17,7 @@ type RouterHandler interface {
 	GetOrigin(w http.ResponseWriter, r *http.Request)
 	GetCheckDB(w http.ResponseWriter, r *http.Request)
 	GetUserURLs(w http.ResponseWriter, r *http.Request)
+	GetInternalStats(w http.ResponseWriter, r *http.Request)
 	PostCreate(w http.ResponseWriter, r *http.Request)
 	PostShorten(w http.ResponseWriter, r *http.Request)
 	PostShortenBatch(w http.ResponseWriter, r *http.Request)
@@ -26,6 +27,7 @@ type RouterHandler interface {
 // InitRouter инициализирует и настраивает HTTP-маршрутизатор (chi.Mux) для приложения.
 func InitRouter(cfg *configs.Config, h RouterHandler, a AuditBroker) *chi.Mux {
 	audit := AuditMiddleware(a)
+	trusted := TrustedSubnetMiddleware(cfg)
 
 	rs := chi.NewRouter()
 	rs.Use(LoggerMiddleware(), GzipMiddleware(), AuthMiddleware(&cfg.Auth), middleware.Timeout(timeoutRequest))
@@ -46,6 +48,10 @@ func InitRouter(cfg *configs.Config, h RouterHandler, a AuditBroker) *chi.Mux {
 			})
 			r.Get("/user/urls", h.GetUserURLs)
 			r.Delete("/user/urls", h.DeleteUserURLs)
+			r.Route("/internal/stats", func(r chi.Router) {
+				r.Use(trusted)
+				r.Get("/", h.GetInternalStats)
+			})
 		})
 	})
 

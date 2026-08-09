@@ -132,6 +132,18 @@ func TestMemoryRepository_DeleteUserURLs(t *testing.T) {
 	}
 }
 
+func TestMemoryRepository_GetStats(t *testing.T) {
+	m := NewMemoryRepository(defaultStoragePath)
+	ctx := context.WithValue(t.Context(), model.UserIDContextKey, defaultUUID)
+	errSave := m.Save(ctx, []model.URLInfo{{ShortURL: defaultShort, OriginalURL: defaultOriginal}})
+	require.NoError(t, errSave)
+	stats, errGetStats := m.GetStats(ctx)
+	require.NoError(t, errGetStats)
+
+	assert.Equal(t, stats.Users, 1)
+	assert.Equal(t, stats.URLs, 1)
+}
+
 func TestMemoryRepository_SaveUserURLs(t *testing.T) {
 	errLog := loggers.CreateLogger("error")
 	require.NoError(t, errLog)
