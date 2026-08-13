@@ -137,3 +137,19 @@ func TestJwtWorker_CreateNewJWTForUser(t *testing.T) {
 	assert.Equal(t, userID, claims.UserID)
 	assert.Equal(t, cfg.TokenIssuer, claims.Issuer)
 }
+
+func TestJwtWorker_CreateNewJWT(t *testing.T) {
+	cfg := &configs.AuthConfig{
+		JWTSecret:   []byte("test-secret-key"),
+		TokenIssuer: "test-issuer",
+	}
+	worker := NewJWTWorker(cfg)
+
+	userID, token, err := worker.CreateNewJWT()
+	require.NoError(t, err)
+	assert.NotEmpty(t, userID)
+	assert.NotEmpty(t, token)
+
+	_, err = uuid.Parse(userID)
+	require.NoError(t, err)
+}

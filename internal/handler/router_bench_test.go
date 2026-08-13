@@ -78,7 +78,7 @@ func routeInit() *chi.Mux {
 	c := service.NewCheckerService(rc)
 	h := NewHandler(cfg, s, c)
 
-	rs := InitRouter(cfg, h, a)
+	rs := InitRouter(cfg, h, h, a)
 	return rs
 }
 

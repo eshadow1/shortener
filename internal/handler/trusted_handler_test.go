@@ -14,7 +14,10 @@ func TestTrustedSubnetMiddleware(t *testing.T) {
 
 	mockHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
+		_, err := w.Write([]byte("OK"))
+		if err != nil {
+			return
+		}
 	})
 
 	tests := []struct {

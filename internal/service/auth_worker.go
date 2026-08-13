@@ -46,6 +46,17 @@ func (jw *jwtWorker) CreateNewJWTForUser(w http.ResponseWriter) (string, error) 
 	return uid, nil
 }
 
+// CreateNewJWT генерирует новый UID и JWT-токен без привязки к HTTP-ответу.
+func (jw *jwtWorker) CreateNewJWT() (uid, token string, err error) {
+	uid = jw.GenerateUserID()
+	token, err = jw.CreateJWT(uid, jw.cfg.JWTSecret)
+	if err != nil {
+		return "", "", err
+	}
+
+	return uid, token, nil
+}
+
 // CreateJWT формирует и подписывает новый JWT-токен с утверждениями.
 func (jw *jwtWorker) CreateJWT(userID string, secret []byte) (string, error) {
 	claims := model.UserClaims{
