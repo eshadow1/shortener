@@ -18,3 +18,9 @@ type UserClaims struct {
 	UserID string `json:"user_id"`
 	jwt.RegisteredClaims
 }
+
+type TokenAuth struct {
+	UID        string `json:"uid"`
+	Token      string `json:"token"`
+	IsNewToken bool   `json:"is_new_token"`
+}

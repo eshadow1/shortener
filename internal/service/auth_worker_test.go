@@ -1,11 +1,10 @@
 package service
 
 import (
-	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/eshadow1/shortener/internal/configs"
+	"github.com/eshadow1/shortener/internal/model"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -85,57 +84,52 @@ func TestJwtWorker_CreateJWT(t *testing.T) {
 	}
 }
 
-func TestJwtWorker_SetAuthCookie(t *testing.T) {
+func TestJwtWorker_GetUID(t *testing.T) {
 	cfg := &configs.AuthConfig{
 		JWTSecret:   []byte("test-secret-key"),
 		TokenIssuer: "test-issuer",
 	}
 	worker := NewJWTWorker(cfg)
 
-	rec := httptest.NewRecorder()
-	token := "test-jwt-token"
-	worker.SetAuthCookie(rec, token)
-
-	cookies := rec.Result().Cookies()
-	require.Len(t, cookies, 1)
-
-	cookie := cookies[0]
-	assert.Equal(t, CookieName, cookie.Name)
-	assert.Equal(t, token, cookie.Value)
-	assert.Equal(t, "/", cookie.Path)
-	assert.Equal(t, CookieMaxAge, cookie.MaxAge)
-	assert.True(t, cookie.HttpOnly)
-	assert.False(t, cookie.Secure)
-	assert.Equal(t, http.SameSiteLaxMode, cookie.SameSite)
-}
-
-func TestJwtWorker_CreateNewJWTForUser(t *testing.T) {
-	cfg := &configs.AuthConfig{
-		JWTSecret:   []byte("test-secret-key"),
-		TokenIssuer: "test-issuer",
+	tests := []struct {
+		name    string
+		token   string
+		secret  []byte
+		wantErr bool
+		tokenID model.TokenAuth
+	}{
+		{
+			name:    "incorrect token",
+			token:   "user-123",
+			secret:  cfg.JWTSecret,
+			wantErr: false,
+			tokenID: model.TokenAuth{
+				IsNewToken: true,
+			},
+		},
+		{
+			name:    "empty token",
+			token:   "",
+			secret:  cfg.JWTSecret,
+			wantErr: false,
+			tokenID: model.TokenAuth{
+				IsNewToken: true,
+			},
+		},
 	}
-	worker := NewJWTWorker(cfg)
 
-	rec := httptest.NewRecorder()
-
-	userID, err := worker.CreateNewJWTForUser(rec)
-	require.NoError(t, err)
-	assert.NotEmpty(t, userID)
-
-	_, err = uuid.Parse(userID)
-	require.NoError(t, err)
-
-	cookies := rec.Result().Cookies()
-	require.Len(t, cookies, 1)
-
-	cookie := cookies[0]
-	assert.Equal(t, CookieName, cookie.Name)
-	assert.NotEmpty(t, cookie.Value)
-
-	claims, err := worker.ValidateJWT(cookie.Value, cfg.JWTSecret)
-	require.NoError(t, err)
-	assert.Equal(t, userID, claims.UserID)
-	assert.Equal(t, cfg.TokenIssuer, claims.Issuer)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tokenID, err := worker.GetUID(t.Context(), tt.token, tt.secret)
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Equal(t, tokenID.IsNewToken, tt.tokenID.IsNewToken)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tokenID.IsNewToken, tt.tokenID.IsNewToken)
+		})
+	}
 }
 
 func TestJwtWorker_CreateNewJWT(t *testing.T) {
@@ -145,11 +139,12 @@ func TestJwtWorker_CreateNewJWT(t *testing.T) {
 	}
 	worker := NewJWTWorker(cfg)
 
-	userID, token, err := worker.CreateNewJWT()
+	tokenID, err := worker.CreateNewJWT()
 	require.NoError(t, err)
-	assert.NotEmpty(t, userID)
-	assert.NotEmpty(t, token)
+	assert.NotEmpty(t, tokenID.UID)
+	assert.NotEmpty(t, tokenID.Token)
+	assert.True(t, tokenID.IsNewToken)
 
-	_, err = uuid.Parse(userID)
+	_, err = uuid.Parse(tokenID.UID)
 	require.NoError(t, err)
 }

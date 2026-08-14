@@ -163,7 +163,9 @@ func (c *Config) Init() {
 	c.parseWithFlag(cfg)
 
 	c.Addr = c.updateEnv("SERVER_ADDRESS", c.Addr)
+	c.GRPCAddr = c.updateEnv("GRPC_ADDRESS", c.GRPCAddr)
 	c.BaseURL = c.updateEnv("BASE_URL", c.BaseURL)
+
 	c.TrustedSubnet = c.updateEnv("TRUSTED_SUBNET", c.TrustedSubnet)
 
 	enableHTTPS, errParseBool := strconv.ParseBool(os.Getenv("ENABLE_HTTPS"))

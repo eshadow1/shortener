@@ -3,6 +3,7 @@ package handler
 import (
 	"net"
 	"net/http"
+	"strings"
 
 	"github.com/eshadow1/shortener/internal/configs"
 )
@@ -29,6 +30,22 @@ func TrustedSubnetMiddleware(cfg *configs.Config) func(http.Handler) http.Handle
 			}
 
 			clientIP := net.ParseIP(ipStr)
+			if clientIP == nil {
+				ips := strings.Join(r.Header.Values("X-Forwarded-For"), ",")
+
+				for _, ip := range strings.Split(ips, ",") {
+					ip = strings.TrimSpace(ip)
+					if ip == "" {
+						continue
+					}
+
+					if temp := net.ParseIP(ip); temp != nil {
+						clientIP = temp
+						break
+					}
+				}
+			}
+
 			if clientIP == nil {
 				http.Error(w, "Forbidden", http.StatusForbidden)
 				return

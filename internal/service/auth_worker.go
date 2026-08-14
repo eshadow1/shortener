@@ -2,8 +2,8 @@
 package service
 
 import (
+	"context"
 	"errors"
-	"net/http"
 	"time"
 
 	"github.com/eshadow1/shortener/internal/configs"
@@ -35,26 +35,16 @@ func NewJWTWorker(cfg *configs.AuthConfig) *jwtWorker {
 	}
 }
 
-// CreateNewJWTForUser генерирует новый идентификатор пользователя, создает для него JWT-токен.
-func (jw *jwtWorker) CreateNewJWTForUser(w http.ResponseWriter) (string, error) {
+// CreateNewJWT генерирует новый UID и JWT-токен без привязки к HTTP-ответу.
+func (jw *jwtWorker) CreateNewJWT() (model.TokenAuth, error) {
 	uid := jw.GenerateUserID()
 	token, err := jw.CreateJWT(uid, jw.cfg.JWTSecret)
-	if err != nil {
-		return uid, err
-	}
-	jw.SetAuthCookie(w, token)
-	return uid, nil
-}
 
-// CreateNewJWT генерирует новый UID и JWT-токен без привязки к HTTP-ответу.
-func (jw *jwtWorker) CreateNewJWT() (uid, token string, err error) {
-	uid = jw.GenerateUserID()
-	token, err = jw.CreateJWT(uid, jw.cfg.JWTSecret)
-	if err != nil {
-		return "", "", err
-	}
-
-	return uid, token, nil
+	return model.TokenAuth{
+		UID:        uid,
+		Token:      token,
+		IsNewToken: true,
+	}, err
 }
 
 // CreateJWT формирует и подписывает новый JWT-токен с утверждениями.
@@ -94,17 +84,21 @@ func (*jwtWorker) ValidateJWT(tokenString string, secret []byte) (*model.UserCla
 	return claims, nil
 }
 
-// SetAuthCookie устанавливает в HTTP-ответ куку с JWT-токеном.
-func (*jwtWorker) SetAuthCookie(w http.ResponseWriter, token string) {
-	http.SetCookie(w, &http.Cookie{
-		Name:     CookieName,
-		Value:    token,
-		Path:     "/",
-		MaxAge:   CookieMaxAge,
-		HttpOnly: true,
-		Secure:   false,
-		SameSite: http.SameSiteLaxMode,
-	})
+// GetUID выполняет получение JWT-токена
+func (jw *jwtWorker) GetUID(_ context.Context, token string, jwtSecret []byte) (model.TokenAuth, error) {
+	if token == "" {
+		return jw.CreateNewJWT()
+	}
+
+	claims, errValidate := jw.ValidateJWT(token, jwtSecret)
+	if errValidate != nil {
+		return jw.CreateNewJWT()
+	}
+
+	return model.TokenAuth{
+		UID:        claims.UserID,
+		IsNewToken: false,
+	}, nil
 }
 
 // GenerateUserID генерирует новый уникальный идентификатор пользователя в формате UUID.

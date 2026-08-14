@@ -15,6 +15,10 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+type JWTWorker interface {
+	GetUID(context.Context, string, []byte) (model.TokenAuth, error)
+}
+
 // AuthInterceptor создает unary interceptor для проверки JWT-токена в gRPC.
 func AuthInterceptor(cfg *configs.AuthConfig) grpc.UnaryServerInterceptor {
 	worker := service.NewJWTWorker(cfg)
@@ -30,43 +34,28 @@ func AuthInterceptor(cfg *configs.AuthConfig) grpc.UnaryServerInterceptor {
 			}
 		}
 
-		setResponseToken := func(newToken string) {
-			header := metadata.Pairs("authorization", "Bearer "+newToken)
-			if err := grpc.SetHeader(ctx, header); err != nil {
-				loggers.Log.Errorf("failed to set header: %v", err)
-			}
+		tokenID, errGetUID := worker.GetUID(ctx, token, cfg.JWTSecret)
+		if errGetUID != nil {
+			return nil, status.Error(codes.Internal, "failed to create user token")
 		}
 
-		var uid string
-
-		if token == "" {
-			newUID, newToken, errCreate := worker.CreateNewJWT()
-			if errCreate != nil {
-				return nil, status.Error(codes.Internal, "failed to create user token")
-			}
-
-			uid = newUID
-			setResponseToken(newToken)
-		} else {
-			claims, errValidate := worker.ValidateJWT(token, cfg.JWTSecret)
-			if errValidate != nil {
-				newUID, newToken, errCreate := worker.CreateNewJWT()
-				if errCreate != nil {
-					return nil, status.Error(codes.Internal, "failed to create user token")
-				}
-
-				uid = newUID
-				setResponseToken(newToken)
-			} else {
-				if claims.UserID == "" {
-					return nil, status.Error(codes.Unauthenticated, "invalid user ID in token")
-				}
-				uid = claims.UserID
-			}
+		if tokenID.IsNewToken {
+			updateHeaders(ctx, tokenID.Token)
 		}
 
-		ctx = context.WithValue(ctx, model.UserIDContextKey, uid)
+		if tokenID.UID == "" {
+			return nil, status.Error(codes.Unauthenticated, "invalid user ID in token")
+		}
 
+		ctx = context.WithValue(ctx, model.UserIDContextKey, tokenID.UID)
 		return handler(ctx, req)
+	}
+}
+
+// updateHeaders устанавливает в GRPC-ответ с JWT-токеном.
+func updateHeaders(ctx context.Context, token string) {
+	header := metadata.Pairs("authorization", "Bearer "+token)
+	if err := grpc.SetHeader(ctx, header); err != nil {
+		loggers.Log.Errorf("failed to set header: %v", err)
 	}
 }
