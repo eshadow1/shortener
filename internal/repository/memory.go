@@ -108,6 +108,25 @@ func (m *memoryRepository) DeleteUserURLs(_ context.Context, userID string, urls
 	return nil
 }
 
+// GetStats возвращает статистику сервиса
+func (m *memoryRepository) GetStats(_ context.Context) (model.StatsResponse, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	users := len(m.matchPairs)
+
+	urls := 0
+	for _, userURLs := range m.matchPairs {
+		for _, infoURL := range userURLs {
+			if !infoURL.IsDelete {
+				urls++
+			}
+		}
+	}
+
+	return model.StatsResponse{Users: users, URLs: urls}, nil
+}
+
 // Close выполняет сохранение текущего состояния хранилища в файл перед завершением работы.
 func (m *memoryRepository) Close() {
 	saveData(m.storagePath, m.matchPairs)

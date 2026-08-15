@@ -29,6 +29,7 @@ type Service interface {
 	GetOriginalURL(context.Context, model.ShortenInfo) (model.OriginalInfo, error)
 	GetUserURLs(context.Context) ([]model.UserURL, error)
 	DeleteUserShortURLs(context.Context, []string) error
+	GetStats(ctx context.Context) (model.StatsResponse, error)
 }
 
 // Checker описывает интерфейс для проверки состояния и доступности базы данных.
@@ -323,6 +324,30 @@ func (h *handler) DeleteUserURLs(w http.ResponseWriter, r *http.Request) {
 	_, errWrite := io.WriteString(w, http.StatusText(http.StatusAccepted))
 	if errWrite != nil {
 		loggers.Log.Errorf("Error writing response: %v", errWrite)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+}
+
+// GetInternalStats возвращает статистику сервиса
+func (h *handler) GetInternalStats(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		return
+	}
+
+	stats, errGetStats := h.s.GetStats(r.Context())
+	if errGetStats != nil {
+		loggers.Log.Errorf("Error get stats: %v", errGetStats)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", ContentTypeData)
+
+	w.WriteHeader(http.StatusOK)
+	if errBody := json.NewEncoder(w).Encode(stats); errBody != nil {
+		loggers.Log.Errorf("Error writing response: %v", errBody)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}

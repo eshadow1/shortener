@@ -92,3 +92,11 @@ type DeleteInfo struct {
 	// URLs содержит список коротких URL, подлежащих удалению.
 	URLs []string
 }
+
+// StatsResponse содержит информацию, необходимую для статистики сервиса
+type StatsResponse struct {
+	// URLs содержит количество коротких URL.
+	URLs int `json:"urls"`
+	// Users содержит количество пользователей.
+	Users int `json:"users"`
+}

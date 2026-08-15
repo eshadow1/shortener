@@ -23,6 +23,8 @@ const (
 	DefaultEmptyString = ""
 	// DefaultAddr — адрес HTTP-сервера приложения по умолчанию.
 	DefaultAddr = "localhost:8080"
+	// DefaultGRPCAddr — адрес HTTP-сервера приложения по умолчанию.
+	DefaultGRPCAddr = ":50051"
 	// DefaultBaseURL — адрес дописываемый по умолчанию.
 	DefaultBaseURL = "http://localhost:8080"
 	// DefaultEnableHTTPS — отключение HTTPS по умолчанию.
@@ -99,6 +101,8 @@ type HTTPSConfig struct {
 type ConfigJSON struct {
 	// Addr — сетевой адрес (хост:порт), на котором запускается HTTP-сервер приложения.
 	Addr string `json:"server_address"`
+	// GRPCAddr — сетевой адрес для gRPC, который дописывается.
+	GRPCAddr string `json:"grpc_address"`
 	// BaseURL — сетевой адрес, который дописывается.
 	BaseURL string `json:"base_url"`
 	// EnableHTTPS - переменная, отвечающая за включение HTTPS
@@ -115,14 +119,20 @@ type ConfigJSON struct {
 	AuditURL string `json:"audit_url"`
 	// AuditFile - путь до файла аудита
 	AuditFile string `json:"audit_file"`
+	// TrustedSubnet - строковое представление бесклассовой адресации (CIDR)
+	TrustedSubnet string `json:"trusted_subnet"`
 }
 
 // Config является главной структурой конфигурации приложения
 type Config struct {
 	// Addr — сетевой адрес (хост:порт), на котором запускается HTTP-сервер приложения.
 	Addr string
+	// GRPCAddr — сетевой адрес для gRPC, который дописывается.
+	GRPCAddr string
 	// BaseURL — сетевой адрес, который дописывается.
 	BaseURL string
+	// TrustedSubnet - строковое представление бесклассовой адресации (CIDR)
+	TrustedSubnet string
 	// HTTPS содержит настройки HTTPS
 	HTTPS HTTPSConfig
 	// Log содержит настройки логирования.
@@ -153,7 +163,10 @@ func (c *Config) Init() {
 	c.parseWithFlag(cfg)
 
 	c.Addr = c.updateEnv("SERVER_ADDRESS", c.Addr)
+	c.GRPCAddr = c.updateEnv("GRPC_ADDRESS", c.GRPCAddr)
 	c.BaseURL = c.updateEnv("BASE_URL", c.BaseURL)
+
+	c.TrustedSubnet = c.updateEnv("TRUSTED_SUBNET", c.TrustedSubnet)
 
 	enableHTTPS, errParseBool := strconv.ParseBool(os.Getenv("ENABLE_HTTPS"))
 	if errParseBool != nil {
@@ -232,7 +245,9 @@ func (*Config) getConfigPath() string {
 
 func (c *Config) parseWithFlag(cfg *ConfigJSON) {
 	flag.StringVar(&c.Addr, "a", cfg.Addr, "host:port")
+	flag.StringVar(&c.GRPCAddr, "g", cfg.GRPCAddr, "host:port")
 	flag.StringVar(&c.BaseURL, "b", cfg.BaseURL, "base url")
+	flag.StringVar(&c.TrustedSubnet, "t", cfg.TrustedSubnet, "trusted subnet")
 	flag.BoolVar(&c.HTTPS.EnableHTTPS, "s", cfg.EnableHTTPS, "enable HTTPS")
 	flag.StringVar(&c.Log.Level, "l", cfg.LogLevel, "level log")
 	flag.StringVar(&c.Storage.Path, "f", cfg.StorageFilePath, "file storage path")
@@ -254,6 +269,7 @@ func (*Config) updateEnv(name, defaultValue string) string {
 func (*Config) parseWithJSON(path string) (*ConfigJSON, error) {
 	cfg := &ConfigJSON{
 		Addr:                  DefaultAddr,
+		GRPCAddr:              DefaultGRPCAddr,
 		BaseURL:               DefaultBaseURL,
 		EnableHTTPS:           DefaultEnableHTTPS,
 		LogLevel:              DefaultLevelLog,
@@ -262,6 +278,7 @@ func (*Config) parseWithJSON(path string) (*ConfigJSON, error) {
 		StoragePathMigrations: DefaultMigrationPath,
 		AuditFile:             DefaultEmptyString,
 		AuditURL:              DefaultEmptyString,
+		TrustedSubnet:         DefaultEmptyString,
 	}
 	if path == "" {
 		return cfg, nil

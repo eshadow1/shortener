@@ -215,6 +215,28 @@ func (repo *postgreSQLRepository) DeleteUserURLs(ctx context.Context, userID str
 	return tx.Commit(ctx)
 }
 
+// GetStats возвращает статистику сервиса
+func (repo *postgreSQLRepository) GetStats(ctx context.Context) (model.StatsResponse, error) {
+	const query = `
+		SELECT
+			COUNT(DISTINCT shorten_url) AS urls,
+			COUNT(DISTINCT user_id) AS users
+		FROM shorten
+		WHERE is_deleted = FALSE
+	`
+
+	var stats model.StatsResponse
+	err := repo.db.QueryRowContext(ctx, query).Scan(&stats.URLs, &stats.Users)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return stats, sql.ErrNoRows
+		}
+		return stats, fmt.Errorf("failed to query shorten_url: %w", err)
+	}
+
+	return stats, nil
+}
+
 // Close закрывает соединение с базой данных и освобождает все связанные ресурсы.
 func (repo *postgreSQLRepository) Close() {
 	repo.db.Close()

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 
 	"github.com/eshadow1/shortener/internal/audit"
 	"github.com/eshadow1/shortener/internal/configs"
+	grpcserver "github.com/eshadow1/shortener/internal/grpc"
 	"github.com/eshadow1/shortener/internal/handler"
 	"github.com/eshadow1/shortener/internal/loggers"
 	"github.com/eshadow1/shortener/internal/repository"
@@ -88,7 +90,12 @@ func main() {
 	c := service.NewCheckerService(rc)
 	h := handler.NewHandler(cfg, s, c)
 
-	rs := handler.InitRouter(cfg, h, a)
+	grpcSrv, grpcLis, errInitGRPC := grpcserver.InitGRPCServer(context.Background(), cfg, s)
+	if errInitGRPC != nil {
+		loggers.Log.Fatalf("Failed to initialize gRPC server: %v", errInitGRPC)
+	}
+
+	rs := handler.InitRouter(cfg, h, h, a)
 
 	server := &http.Server{
 		Addr:         cfg.Addr,
@@ -100,6 +107,13 @@ func main() {
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+
+	go func() {
+		loggers.Log.Infof("Starting gRPC server on %s", cfg.GRPCAddr)
+		if errGRPC := grpcSrv.Serve(grpcLis); errGRPC != nil {
+			loggers.Log.Errorf("gRPC server failed: %v", errGRPC)
+		}
+	}()
 
 	go func() {
 		if cfg.HTTPS.EnableHTTPS {
@@ -122,8 +136,35 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultShutdownTimeout)
 	defer cancel()
 
-	if err := server.Shutdown(ctx); err != nil {
-		loggers.Log.Infof("Server forced to shutdown: %v", err)
-		return
-	}
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		if err := server.Shutdown(ctx); err != nil {
+			loggers.Log.Infof("HTTP server forced to shutdown: %v", err)
+			return
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+
+		stopped := make(chan struct{})
+		go func() {
+			grpcSrv.GracefulStop()
+			close(stopped)
+		}()
+
+		select {
+		case <-stopped:
+			loggers.Log.Infoln("gRPC server gracefully stopped")
+		case <-ctx.Done():
+			loggers.Log.Warnln("gRPC server graceful stop timed out, forcing stop")
+			grpcSrv.Stop() // Принудительная остановка
+		}
+	}()
+
+	wg.Wait()
+	loggers.Log.Infoln("All servers shut down successfully")
 }

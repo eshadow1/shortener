@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -19,6 +20,7 @@ const (
 	testBufferSize = 10
 	testBatchSize  = 10
 	testTimeout    = 10 * time.Second
+	defaultUUID    = "test-1234"
 )
 
 func TestShortenerService_CreateShortUrl(t *testing.T) {
@@ -103,6 +105,43 @@ func TestShortenerService_GetShortUrl(t *testing.T) {
 				require.NoError(t, errSave)
 			}
 			assert.Equal(t, test.expectedOriginal, original)
+		})
+	}
+}
+
+func TestShortenerService_DeleteUserShortURLs(t *testing.T) {
+	cfg := configs.ServiceConfig{
+		BufferSizeChan: testBufferSize,
+		BatchSize:      testBatchSize,
+		FlushInterval:  testTimeout,
+	}
+	tests := []struct {
+		name          string
+		urls          []string
+		expectedError error
+	}{
+		{
+			name:          "success_delete_empty",
+			urls:          []string{},
+			expectedError: nil,
+		},
+		{
+			name:          "success_delete",
+			urls:          []string{"https"},
+			expectedError: nil,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			mr := mockservice.NewMockRepository(t)
+			s := NewShortenerService(mr, cfg)
+			ctx := context.WithValue(t.Context(), model.UserIDContextKey, defaultUUID)
+			errDelete := s.DeleteUserShortURLs(ctx, test.urls)
+			if test.expectedError != nil {
+				assert.Equal(t, test.expectedError, errDelete)
+			} else {
+				require.NoError(t, errDelete)
+			}
 		})
 	}
 }
